@@ -17,6 +17,7 @@ Paldex complet · Calculateur de reproduction (chemins complets) · Taux de capt
 - 📖 **Paldex** — les 299 Pals de Palworld 1.0. Survole un Pal pour un aperçu rapide, clique pour ouvrir sa **fiche complète** (stats, éléments, aptitudes de travail, partner skill, passifs, compétences actives, drops, reproduction & capture).
 - 🥚 **Breeding** — calcul direct (Parent 1 + Parent 2 = enfant), **toutes les recettes** d'un Pal, **path finder** (le chemin d'élevage le plus court depuis les Pals que tu possèdes) et **arbre de reproduction** interactif.
 - 🎯 **Capture** — estimation du taux de capture par sphère selon le niveau, les PV, la puissance de capture et le bonus dans le dos.
+- 🎒 **Objets** — recherche un objet pour voir **tous les Pals qui le lâchent**, avec la quantité et le taux de drop.
 - 👥 **Team Builder** — équipe de 5, partner skills, **détection des cumuls** (stacking), synergies, couverture élémentaire et aptitudes de travail cumulées.
 - 📝 **Notes & projets** — carnet local pour planifier tes objectifs.
 
@@ -45,6 +46,10 @@ Survole un Pal pour un aperçu rapide, clique pour ouvrir sa fiche complète :
 | Taux de capture | Composition d'équipe | Notes & projets |
 |:---:|:---:|:---:|
 | ![Calculateur de taux de capture](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_lcL6rPAwFU.png) | ![Composition d'équipe](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_lwv4t0f9wW.png) | ![Notes & projets](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_hMoLB0Wrf6.png) |
+
+### Recherche d'objets
+
+![Recherche d'objets](https://medias.lerobro.com/screenshots/Sohhka/firefox_jYLT276ZxV.png)
 
 ## ⬇️ Installation (utilisateurs)
 

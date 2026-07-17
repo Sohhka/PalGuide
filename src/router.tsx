@@ -5,6 +5,7 @@ import { PalDetailPage } from './pages/PalDetailPage'
 import { BreedingPage } from './pages/BreedingPage'
 import { BreedingTreePage } from './pages/BreedingTreePage'
 import { CapturePage } from './pages/CapturePage'
+import { ItemsPage } from './pages/ItemsPage'
 import { TeamBuilderPage } from './pages/TeamBuilderPage'
 import { NotesPage } from './pages/NotesPage'
 import { AboutPage } from './pages/AboutPage'
@@ -21,6 +22,7 @@ export const router = createHashRouter([
       { path: 'breeding', element: <BreedingPage /> },
       { path: 'breeding/arbre', element: <BreedingTreePage /> },
       { path: 'capture', element: <CapturePage /> },
+      { path: 'objets', element: <ItemsPage /> },
       { path: 'equipe', element: <TeamBuilderPage /> },
       { path: 'notes', element: <NotesPage /> },
       { path: 'a-propos', element: <AboutPage /> },
