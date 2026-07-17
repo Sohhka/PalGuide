@@ -18,6 +18,7 @@ Paldex complet · Calculateur de reproduction (chemins complets) · Taux de capt
 - 🥚 **Breeding** — calcul direct (Parent 1 + Parent 2 = enfant), **toutes les recettes** d'un Pal, **path finder** (le chemin d'élevage le plus court depuis les Pals que tu possèdes) et **arbre de reproduction** interactif.
 - 🎯 **Capture** — estimation du taux de capture par sphère selon le niveau, les PV, la puissance de capture et le bonus dans le dos.
 - 🎒 **Objets** — recherche un objet pour voir **tous les Pals qui le lâchent**, avec la quantité et le taux de drop.
+- 🎮 **Ma partie** — importe la **sauvegarde de ta partie** Palworld pour récupérer tes Pals (équipe, boîte, base) avec leurs **niveaux, IVs et passifs**. Alimente aussi le path finder. *(Import : app de bureau, nécessite Python — voir plus bas.)*
 - 👥 **Team Builder** — équipe de 5, partner skills, **détection des cumuls** (stacking), synergies, couverture élémentaire et aptitudes de travail cumulées.
 - 📝 **Notes & projets** — carnet local pour planifier tes objectifs.
 
@@ -59,6 +60,25 @@ Survole un Pal pour un aperçu rapide, clique pour ouvrir sa fiche complète :
 
 > L'application n'est pas signée numériquement : Windows SmartScreen peut afficher un avertissement.
 > Clique sur **« Informations complémentaires » → « Exécuter quand même »**.
+
+## 🎮 Importer ta sauvegarde (onglet « Ma partie »)
+
+PalGuide peut lire ta sauvegarde pour afficher tes Pals possédés (équipe / boîte / base) avec leurs niveaux, IVs et passifs, et alimenter le path finder. **Lecture seule** : ta sauvegarde n'est jamais modifiée.
+
+Prérequis (une seule fois) :
+
+1. Installer **[Python](https://www.python.org/downloads/)** (coche « Add Python to PATH » à l'installation).
+2. Installer le paquet de lecture des saves :
+   ```bash
+   pip install palworld-save-tools
+   ```
+
+Ensuite, dans l'onglet **Ma partie** → « Choisir Level.sav et importer », sélectionne le fichier de ton monde :
+```
+%LOCALAPPDATA%\Pal\Saved\SaveGames\<SteamID>\<monde>\Level.sav
+```
+
+> La décompression Oodle des saves récentes (format `PlM`) est gérée automatiquement par l'app (via `oozextract`). Recharger une sauvegarde **remplace** l'ancienne (jamais de fusion).
 
 ## 🛠️ Développement
 

@@ -1,8 +1,16 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron')
 const path = require('node:path')
+const { importSave } = require('./save-import.cjs')
 
 const isDev = !!process.env.ELECTRON_DEV
 let win = null
+
+// Chemin du script Python d'import (embarqué hors-asar en prod via extraResources)
+function importScriptPath() {
+  return isDev || !app.isPackaged
+    ? path.join(__dirname, '..', 'scripts', 'import_save.py')
+    : path.join(process.resourcesPath, 'import_save.py')
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -51,6 +59,36 @@ ipcMain.on('window:toggle-maximize', () => {
 })
 ipcMain.on('window:close', () => win?.close())
 ipcMain.handle('window:is-maximized', () => !!win?.isMaximized())
+
+// ----- Import d'une sauvegarde Palworld -----
+function defaultSaveDir() {
+  const local = process.env.LOCALAPPDATA
+  return local ? path.join(local, 'Pal', 'Saved', 'SaveGames') : undefined
+}
+
+ipcMain.handle('save:import', async () => {
+  const res = await dialog.showOpenDialog(win, {
+    title: 'Choisir le fichier Level.sav de ta partie',
+    defaultPath: defaultSaveDir(),
+    properties: ['openFile'],
+    filters: [
+      { name: 'Sauvegarde Palworld', extensions: ['sav'] },
+      { name: 'Tous les fichiers', extensions: ['*'] },
+    ],
+  })
+  if (res.canceled || !res.filePaths.length) return { canceled: true }
+  const levelPath = res.filePaths[0]
+  try {
+    const data = await importSave(levelPath, importScriptPath())
+    return { ok: true, data }
+  } catch (e) {
+    const msg = String(e.message || e)
+    let code = 'ERROR'
+    if (msg.includes('PYTHON_MISSING')) code = 'PYTHON_MISSING'
+    else if (msg.includes('MODULE_MISSING')) code = 'MODULE_MISSING'
+    return { error: code, detail: msg.slice(0, 500) }
+  }
+})
 
 app.whenReady().then(() => {
   createWindow()

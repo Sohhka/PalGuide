@@ -17,6 +17,7 @@ import {
   buildOptimalTree,
   treeToSteps,
 } from '../lib/breeding'
+import { ownedKeysFromImport } from '../lib/savedata'
 
 type Tab = 'calc' | 'combos' | 'path'
 
@@ -184,23 +185,29 @@ function CombosFinder({
 
 /* --------------------------------- Path finder --------------------------------- */
 function PathFinder({ graph }: { graph: NonNullable<ReturnType<typeof useBreedingGraph>> }) {
-  const { owned, toggleOwned, setOwned } = useStore()
+  const { owned, toggleOwned, setOwned, importedSave, selectedPlayerUid } = useStore()
   const [target, setTarget] = useState<Pal | null>(null)
   const [pickOwned, setPickOwned] = useState(false)
+
+  const importedKeys = useMemo(
+    () => ownedKeysFromImport(importedSave, selectedPlayerUid),
+    [importedSave, selectedPlayerUid],
+  )
 
   const addCommons = () => {
     const commons = pals.filter((p) => p.rarity <= 4).map((p) => p.key)
     setOwned([...new Set([...owned, ...commons])])
   }
 
+  // Pals disponibles = possédés manuellement ∪ Pals de la save importée
   const ownedIds = useMemo(() => {
     const s = new Set<number>()
-    for (const k of owned) {
+    for (const k of new Set([...owned, ...importedKeys])) {
       const p = palByKey.get(k)
       if (p) s.add(p.id)
     }
     return s
-  }, [owned])
+  }, [owned, importedKeys])
 
   const result = useMemo(() => {
     if (!target || ownedIds.size === 0) return null
@@ -217,7 +224,11 @@ function PathFinder({ graph }: { graph: NonNullable<ReturnType<typeof useBreedin
       <div className="card p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className="text-sm font-semibold text-[var(--color-muted)]">
-            Tes Pals ({owned.length})
+            Tes Pals ({owned.length}
+            {importedKeys.length > 0 && (
+              <span className="text-[var(--color-brand)]"> + {importedKeys.length} de ta save</span>
+            )}
+            )
           </div>
           <div className="flex gap-2">
             <button className="btn" onClick={() => setPickOwned(true)}>

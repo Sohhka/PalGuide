@@ -117,3 +117,26 @@ export interface Meta {
 }
 
 export type RarityTier = 'common' | 'rare' | 'epic' | 'legendary'
+
+export type PalLocation = 'party' | 'palbox' | 'base'
+
+export interface ImportedPal {
+  instanceId: string | null
+  species: string
+  palKey: string | null // clé PalGuide résolue (null = humain/inconnu)
+  isBoss: boolean
+  gender: 'male' | 'female' | null
+  level: number
+  nickname: string | null
+  iv: { hp: number; melee: number; shot: number; defense: number }
+  passives: string[]
+  location: PalLocation
+  ownerUid: string | null
+}
+
+export interface ImportedSave {
+  world: string
+  importedAt: number
+  players: { uid: string; name: string; palCount: number }[]
+  pals: ImportedPal[]
+}

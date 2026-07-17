@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { ImportedSave } from '../lib/types'
 
 export interface Note {
   id: string
@@ -21,6 +22,14 @@ interface AppState {
   team: (string | null)[]
   setTeamSlot: (index: number, key: string | null) => void
   clearTeam: () => void
+
+  // Sauvegarde importée (REMPLACÉE à chaque import — jamais fusionnée)
+  importedSave: ImportedSave | null
+  setImportedSave: (save: ImportedSave | null) => void
+  clearImportedSave: () => void
+  // Personnage sélectionné (saves coop/serveur multijoueur)
+  selectedPlayerUid: string | null
+  setSelectedPlayerUid: (uid: string | null) => void
 
   // Favoris
   favorites: string[]
@@ -54,6 +63,21 @@ export const useStore = create<AppState>()(
           return { team }
         }),
       clearTeam: () => set({ team: [null, null, null, null, null] }),
+
+      importedSave: null,
+      selectedPlayerUid: null,
+      // Remplace intégralement la save précédente (aucune fusion possible).
+      // Sélectionne par défaut le personnage ayant le plus de Pals (ton perso principal).
+      setImportedSave: (save) =>
+        set({
+          importedSave: save,
+          selectedPlayerUid:
+            save && save.players.length
+              ? [...save.players].sort((a, b) => b.palCount - a.palCount)[0].uid
+              : null,
+        }),
+      clearImportedSave: () => set({ importedSave: null, selectedPlayerUid: null }),
+      setSelectedPlayerUid: (uid) => set({ selectedPlayerUid: uid }),
 
       favorites: [],
       toggleFavorite: (key) =>

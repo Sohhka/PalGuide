@@ -8,6 +8,7 @@ import { PalTypeBadges, RarityBadge, WorkBadge, ElementBadge } from './badges'
 import { StatBar } from './StatBar'
 import { palDexLabel, SIZE_LABEL, genderText, formatNumber } from '../lib/pal-helpers'
 import { useStore } from '../store/useStore'
+import { importByKey, LOCATION_LABEL, ivTotal } from '../lib/savedata'
 
 const MAX = {
   hp: Math.max(...pals.map((p) => p.stats.hp)),
@@ -96,10 +97,15 @@ function Info2({ label, value }: { label: string; value: string }) {
 }
 
 export function PalDetail({ pal, onNavigate }: { pal: Pal; onNavigate?: () => void }) {
-  const { isOwned, toggleOwned, favorites, toggleFavorite, team, setTeamSlot } = useStore()
+  const { isOwned, toggleOwned, favorites, toggleFavorite, team, setTeamSlot, importedSave, selectedPlayerUid } =
+    useStore()
   const guaranteedPassives = useMemo(
     () => pal.guaranteedPassives.map((k) => passives[k]).filter(Boolean),
     [pal],
+  )
+  const myInstances = useMemo(
+    () => importByKey(importedSave, selectedPlayerUid).get(pal.key) ?? [],
+    [importedSave, selectedPlayerUid, pal.key],
   )
   const owned = isOwned(pal.key)
   const fav = favorites.includes(pal.key)
@@ -150,6 +156,38 @@ export function PalDetail({ pal, onNavigate }: { pal: Pal; onNavigate?: () => vo
           </div>
         </div>
       </div>
+
+      {myInstances.length > 0 && (
+        <Section title={`Tes exemplaires (${myInstances.length})`} icon={<Users size={15} />}>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {myInstances
+              .slice()
+              .sort((a, b) => ivTotal(b.iv) - ivTotal(a.iv))
+              .map((inst, i) => (
+                <div key={inst.instanceId ?? i} className="border border-[var(--color-border)] bg-[var(--color-bg-soft)] p-2.5">
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="font-bold">{inst.nickname || pal.name}</span>
+                    <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-muted)]">Niv. {inst.level}</span>
+                    <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-brand)]">{LOCATION_LABEL[inst.location]}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['hp', 'shot', 'defense'] as const).map((k) => {
+                      const label = k === 'hp' ? 'PV' : k === 'shot' ? 'ATQ' : 'DÉF'
+                      const v = inst.iv[k]
+                      const color = v >= 70 ? 'var(--color-good)' : v >= 40 ? 'var(--color-warn)' : 'var(--color-faint)'
+                      return (
+                        <div key={k} className="border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-1 text-center">
+                          <div className="text-[9px] uppercase text-[var(--color-faint)]">IV {label}</div>
+                          <div className="text-sm font-bold" style={{ color }}>{v}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </Section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-4">
