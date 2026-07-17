@@ -1,0 +1,23 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+
+# Raw data sources (large, regenerable via npm run build-data)
+data/_sources
+data/_cache
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Captures d'écran de dev
+.shots
+
+# Installateurs / build electron
+release
+
+# Cache TypeScript
+*.tsbuildinfo

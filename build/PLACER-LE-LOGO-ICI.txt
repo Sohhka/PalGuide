@@ -1,0 +1,12 @@
+Placez ici les icônes de l'application (utilisées par electron-builder) :
+
+  build/icon.ico   -> icône de l'exécutable ET de l'installateur Windows (256x256, format .ico multi-tailles)
+  build/icon.png   -> icône de la fenêtre / Linux (512x512, fond transparent recommandé)
+
+Optionnel, dans le dossier public/ :
+  public/logo.png     -> logo affiché DANS l'application (barre de titre), fond transparent
+  public/favicon.png  -> icône d'onglet en mode web
+
+Une fois icon.ico en place, générez l'installateur :
+  npm run dist:win
+L'installateur .exe apparaîtra dans le dossier release/.

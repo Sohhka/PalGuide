@@ -1,0 +1,8 @@
+# Normalisation des fins de ligne
+* text=auto
+
+# Fichiers binaires (pas de normalisation)
+*.png binary
+*.webp binary
+*.ico binary
+*.svg binary
