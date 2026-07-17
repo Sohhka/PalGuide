@@ -22,6 +22,30 @@ Paldex complet · Calculateur de reproduction (chemins complets) · Taux de capt
 
 Interface inspirée des menus du jeu, **100 % en français**, **hors-ligne** (données et images embarquées).
 
+## 📸 Captures d'écran
+
+### Paldex
+
+![Paldex](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_ojqhF7HXY4.png)
+
+Survole un Pal pour un aperçu rapide, clique pour ouvrir sa fiche complète :
+
+| Aperçu au survol | Fiche complète (popup) |
+|:---:|:---:|
+| ![Paldex — survol d'un Pal](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_2e7NF5ci1l.png) | ![Paldex — popup fiche complète](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_a8msyMZ20L.png) |
+
+### Reproduction (Breeding)
+
+| Calculateur de reproduction | Arbre de reproduction |
+|:---:|:---:|
+| ![Calculateur de reproduction](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_FaKvIThQjQ.png) | ![Arbre de reproduction](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_7ar0vsYmET.png) |
+
+### Capture · Équipe · Notes
+
+| Taux de capture | Composition d'équipe | Notes & projets |
+|:---:|:---:|:---:|
+| ![Calculateur de taux de capture](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_lcL6rPAwFU.png) | ![Composition d'équipe](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_lwv4t0f9wW.png) | ![Notes & projets](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_hMoLB0Wrf6.png) |
+
 ## ⬇️ Installation (utilisateurs)
 
 1. Va dans l'onglet **[Releases](../../releases)**.
@@ -70,15 +94,6 @@ Options : `node scripts/scrape-paldb.mjs --parse` (re-parse le cache sans re-té
 ## 🧱 Stack technique
 
 Electron · Vite · React · TypeScript · Tailwind CSS v4 · Zustand · React Router (HashRouter).
-
-## 🎨 Logo
-
-Déposer les icônes ici :
-
-- `build/icon.ico` — icône de l'exécutable et de l'installateur Windows.
-- `build/icon.png` — icône de la fenêtre / Linux (512×512).
-- `public/logo.png` — logo affiché dans l'application.
-- `public/favicon.png` — icône d'onglet en mode web.
 
 ## 🤝 Crédits
 
