@@ -21,6 +21,15 @@ export const palsSortedByDex = [...pals].sort(
   (a, b) => (a.dex ?? 9999) - (b.dex ?? 9999) || a.name.localeCompare(b.name),
 )
 
+// Passifs « standard » (breedables/affichés en jeu), pour le planificateur de talents.
+export interface PassiveOption extends PassiveInfo {
+  key: string
+}
+export const standardPassives: PassiveOption[] = Object.entries(passives)
+  .filter(([, v]) => v.standard)
+  .map(([key, v]) => ({ key, ...v }))
+  .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
+
 // ---- Graphe de reproduction : chargé à la demande (fichier volumineux) ----
 export interface BreedingGraph {
   /** enfant -> liste de paires [parent1Id, parent2Id] */

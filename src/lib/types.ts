@@ -105,6 +105,8 @@ export interface PassiveInfo {
   name: string
   description: string | null
   rank: number
+  standard?: boolean
+  inheritable?: boolean
 }
 
 export interface Meta {

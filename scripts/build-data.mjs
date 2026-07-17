@@ -131,6 +131,8 @@ function main() {
       name,
       description: fr(p.LocalizedDescriptions, null),
       rank: p.Rank,
+      standard: !!p.IsStandardPassiveSkill,
+      inheritable: !!p.RandomInheritanceAllowed,
     }
   }
 

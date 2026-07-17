@@ -15,7 +15,7 @@ Paldex complet · Calculateur de reproduction (chemins complets) · Taux de capt
 ## ✨ Fonctionnalités
 
 - 📖 **Paldex** — les 299 Pals de Palworld 1.0. Survole un Pal pour un aperçu rapide, clique pour ouvrir sa **fiche complète** (stats, éléments, aptitudes de travail, partner skill, passifs, compétences actives, drops, reproduction & capture).
-- 🥚 **Breeding** — calcul direct (Parent 1 + Parent 2 = enfant), **toutes les recettes** d'un Pal, **path finder** (le chemin d'élevage le plus court depuis les Pals que tu possèdes) et **arbre de reproduction** interactif.
+- 🥚 **Breeding** — calcul direct (Parent 1 + Parent 2 = enfant), **toutes les recettes** d'un Pal, **path finder** (chemin le plus court depuis tes Pals) et **arbre de reproduction** interactif avec **planificateur de talents** : choisis les passifs visés et repère, parmi tes Pals importés, ceux qui les portent (leurs talents s'affichent dans l'arbre).
 - 🎯 **Capture** — estimation du taux de capture par sphère selon le niveau, les PV, la puissance de capture et le bonus dans le dos.
 - 🎒 **Objets** — recherche un objet pour voir **tous les Pals qui le lâchent**, avec la quantité et le taux de drop.
 - 🎮 **Ma partie** — importe la **sauvegarde de ta partie** Palworld pour récupérer tes Pals (équipe, boîte, base) avec leurs **niveaux, IVs et passifs**. Alimente aussi le path finder. *(Import : app de bureau, nécessite Python — voir plus bas.)*
