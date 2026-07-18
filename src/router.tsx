@@ -6,6 +6,7 @@ import { BreedingPage } from './pages/BreedingPage'
 import { BreedingTreePage } from './pages/BreedingTreePage'
 import { CapturePage } from './pages/CapturePage'
 import { ItemsPage } from './pages/ItemsPage'
+import { EquipmentPage } from './pages/EquipmentPage'
 import { TeamBuilderPage } from './pages/TeamBuilderPage'
 import { NotesPage } from './pages/NotesPage'
 import { DataImportPage } from './pages/DataImportPage'
@@ -25,6 +26,7 @@ export const router = createHashRouter([
       { path: 'breeding/arbre', element: <BreedingTreePage /> },
       { path: 'capture', element: <CapturePage /> },
       { path: 'objets', element: <ItemsPage /> },
+      { path: 'equipement', element: <EquipmentPage /> },
       { path: 'equipe', element: <TeamBuilderPage /> },
       { path: 'notes', element: <NotesPage /> },
       { path: 'ma-partie', element: <DataImportPage /> },

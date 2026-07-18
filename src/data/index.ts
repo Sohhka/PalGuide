@@ -40,6 +40,38 @@ export interface BreedingGraph {
   parentToChildren: Map<number, Set<number>>
 }
 
+// ---- Équipement (armes/armures/planeurs/accessoires) : chargé à la demande ----
+export interface EquipVariant {
+  rarity: number
+  attack?: number
+  defense?: number
+  durability?: number
+  weight?: number
+  gold?: number
+  magazine?: number
+  hp?: number
+}
+export interface EquipItem {
+  slug: string
+  name: string
+  category: string
+  icon: string | null
+  rank?: number
+  variants: EquipVariant[]
+  materials: { name: string; icon: string }[]
+}
+export interface EquipData {
+  categories: { id: string; label: string }[]
+  items: EquipItem[]
+}
+let equipPromise: Promise<EquipData> | null = null
+export function loadEquipment(): Promise<EquipData> {
+  if (!equipPromise) {
+    equipPromise = import('./equipment.json').then((mod) => mod.default as unknown as EquipData)
+  }
+  return equipPromise
+}
+
 // ---- Apparitions de Pals (spawns) : chargé à la demande (~1 Mo) ----
 export type SpawnData = Record<string, [number, number][]>
 let spawnPromise: Promise<SpawnData> | null = null

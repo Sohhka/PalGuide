@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { BookOpen, Egg, Network, Target, Package, Users, StickyNote, Gamepad2, Map as MapIcon, Info } from 'lucide-react'
+import { BookOpen, Egg, Network, Target, Package, Users, StickyNote, Gamepad2, Map as MapIcon, Swords, Info } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { TitleBar } from './TitleBar'
 
@@ -11,6 +11,7 @@ const NAV: NavItem[] = [
   { to: '/breeding/arbre', label: 'Arbre', icon: Network },
   { to: '/capture', label: 'Capture', icon: Target },
   { to: '/objets', label: 'Objets', icon: Package },
+  { to: '/equipement', label: 'Équipement', icon: Swords },
   { to: '/equipe', label: 'Équipe', icon: Users },
   { to: '/ma-partie', label: 'Ma partie', icon: Gamepad2 },
   { to: '/carte', label: 'Carte', icon: MapIcon },
