@@ -92,6 +92,36 @@ export function loadEquipment(): Promise<EquipData> {
   return equipPromise
 }
 
+// ---- Catalogue d'items (éditeur d'inventaire) : chargé à la demande ----
+export interface ItemCatalogEntry {
+  id: string // StaticId (= asset) tel que stocké dans la save
+  name: string // nom (français si dispo, sinon anglais)
+  nameEn?: string // nom anglais (pour la recherche), si différent du FR
+  icon: string | null
+  rarity: number // 0-4
+  cat: string // catégorie d'affichage
+  stack: boolean // empilable (sinon équipement à données dynamiques)
+  sort: number
+}
+let itemsCatalogPromise: Promise<ItemCatalogEntry[]> | null = null
+export function loadItemsCatalog(): Promise<ItemCatalogEntry[]> {
+  if (!itemsCatalogPromise) {
+    itemsCatalogPromise = import('./items-catalog.json').then((mod) => mod.default as unknown as ItemCatalogEntry[])
+  }
+  return itemsCatalogPromise
+}
+
+// ---- Catalogue de compétences actives (éditeur de Pals) : chargé à la demande ----
+export interface SkillEntry { id: string; name: string; element: string; power: number }
+export interface SkillsCatalog { skills: SkillEntry[]; learn: Record<string, string[]> }
+let skillsCatalogPromise: Promise<SkillsCatalog> | null = null
+export function loadSkillsCatalog(): Promise<SkillsCatalog> {
+  if (!skillsCatalogPromise) {
+    skillsCatalogPromise = import('./skills-catalog.json').then((mod) => mod.default as unknown as SkillsCatalog)
+  }
+  return skillsCatalogPromise
+}
+
 // ---- Apparitions de Pals (spawns) : chargé à la demande (~1 Mo) ----
 export type SpawnData = Record<string, [number, number][]>
 let spawnPromise: Promise<SpawnData> | null = null

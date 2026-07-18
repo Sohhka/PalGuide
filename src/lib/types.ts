@@ -133,6 +133,7 @@ export interface ImportedPal {
   nickname: string | null
   iv: { hp: number; melee: number; shot: number; defense: number }
   passives: string[]
+  activeSkills?: string[] // compétences actives équipées (assets, ex. "PowerBall")
   location: PalLocation
   ownerUid: string | null
 }
@@ -149,6 +150,14 @@ export interface SavePlayer {
   name: string
   palCount: number
   fastTravel?: string[] // GUIDs (minuscule, sans tiret) des points de voyage rapide débloqués
+  // --- champs éditables (Phase 2) ---
+  instanceId?: string | null // InstanceId de l'entrée joueur dans CharacterSaveParameterMap
+  level?: number
+  exp?: number
+  statusPoints?: Record<string, number> // clé = nom japonais on-disk -> points alloués
+  techPoint?: number | null
+  bossTechPoint?: number | null
+  palboxId?: string | null // GUID du conteneur boîte à Pals (pour créer des Pals)
 }
 
 export interface ImportedSave {

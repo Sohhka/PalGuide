@@ -11,12 +11,22 @@ import {
   Home,
   Swords,
   Pencil,
+  UserCog,
+  Backpack,
+  Archive,
+  Sparkles,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PalIcon } from '../components/PalIcon'
 import { PalTypeBadges, StarRow } from '../components/badges'
 import { PalDetailModal } from '../components/PalDetailModal'
 import { PalEditModal } from '../components/PalEditModal'
+import { PlayerEditModal } from '../components/PlayerEditModal'
+import { InventoryEditModal } from '../components/InventoryEditModal'
+import { RestoreBackupModal } from '../components/RestoreBackupModal'
+import { CreatePalModal } from '../components/CreatePalModal'
+import { FixHostModal } from '../components/FixHostModal'
 import { palByKey } from '../data'
 import { useStore } from '../store/useStore'
 import { resolveImport, LOCATION_LABEL, ivTotal, palsOfPlayer } from '../lib/savedata'
@@ -38,6 +48,16 @@ export function DataImportPage() {
   const [sort, setSort] = useState<'level' | 'iv' | 'name'>('level')
   const [modalPal, setModalPal] = useState<Pal | null>(null)
   const [editingPal, setEditingPal] = useState<ImportedPal | null>(null)
+  const [editingPlayer, setEditingPlayer] = useState(false)
+  const [editingInventory, setEditingInventory] = useState(false)
+  const [creatingPal, setCreatingPal] = useState(false)
+  const [fixingHost, setFixingHost] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+
+  const currentPlayer = useMemo(
+    () => importedSave?.players.find((p) => p.uid === selectedPlayerUid) ?? importedSave?.players[0] ?? null,
+    [importedSave, selectedPlayerUid],
+  )
 
   const doImport = async () => {
     if (!window.electronAPI) return
@@ -93,9 +113,36 @@ export function DataImportPage() {
         subtitle="Charge le fichier de sauvegarde de ta partie Palworld pour récupérer tes Pals (équipe, boîte, base) avec leurs niveaux, IVs et passifs."
         actions={
           importedSave ? (
-            <button className="btn" onClick={clearImportedSave}>
-              <Trash2 size={15} /> Vider la save
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {canEdit && currentPlayer && (
+                <button className="btn btn-brand" onClick={() => setEditingPlayer(true)}>
+                  <UserCog size={15} /> Éditer le personnage
+                </button>
+              )}
+              {canEdit && currentPlayer && (
+                <button className="btn" onClick={() => setEditingInventory(true)}>
+                  <Backpack size={15} /> Inventaire
+                </button>
+              )}
+              {canEdit && currentPlayer?.palboxId && (
+                <button className="btn" onClick={() => setCreatingPal(true)}>
+                  <Sparkles size={15} /> Créer un Pal
+                </button>
+              )}
+              {canEdit && multiplayer && (
+                <button className="btn" onClick={() => setFixingHost(true)} title="Jouer en solo une save multijoueur (échange de GUID)">
+                  <ArrowLeftRight size={15} /> Solo depuis multi
+                </button>
+              )}
+              {canEdit && (
+                <button className="btn" onClick={() => setRestoring(true)} title="Restaurer une sauvegarde de secours">
+                  <Archive size={15} /> Restaurer
+                </button>
+              )}
+              <button className="btn" onClick={clearImportedSave}>
+                <Trash2 size={15} /> Vider la save
+              </button>
+            </div>
           ) : undefined
         }
       />
@@ -232,6 +279,21 @@ export function DataImportPage() {
       <PalDetailModal pal={modalPal} onClose={() => setModalPal(null)} />
       {editingPal && importedSave?.levelPath && (
         <PalEditModal pal={editingPal} levelPath={importedSave.levelPath} onClose={() => setEditingPal(null)} />
+      )}
+      {editingPlayer && currentPlayer && importedSave?.levelPath && (
+        <PlayerEditModal player={currentPlayer} levelPath={importedSave.levelPath} onClose={() => setEditingPlayer(false)} />
+      )}
+      {editingInventory && currentPlayer && importedSave?.levelPath && (
+        <InventoryEditModal player={currentPlayer} levelPath={importedSave.levelPath} onClose={() => setEditingInventory(false)} />
+      )}
+      {restoring && importedSave?.levelPath && (
+        <RestoreBackupModal levelPath={importedSave.levelPath} onClose={() => setRestoring(false)} />
+      )}
+      {creatingPal && currentPlayer && importedSave?.levelPath && (
+        <CreatePalModal player={currentPlayer} levelPath={importedSave.levelPath} onClose={() => setCreatingPal(false)} />
+      )}
+      {fixingHost && importedSave?.levelPath && (
+        <FixHostModal players={importedSave.players} levelPath={importedSave.levelPath} onClose={() => setFixingHost(false)} />
       )}
     </>
   )

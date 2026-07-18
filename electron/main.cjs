@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron')
 const path = require('node:path')
 const { importSave } = require('./save-import.cjs')
-const { editSave } = require('./save-edit.cjs')
+const { editSave, editPlayer, readInventory, listBackups, restoreBackup, fixHostSave } = require('./save-edit.cjs')
 
 const isDev = !!process.env.ELECTRON_DEV
 let win = null
@@ -105,6 +105,84 @@ ipcMain.handle('save:edit', async (_e, payload) => {
     if (msg.includes('PYTHON_MISSING')) code = 'PYTHON_MISSING'
     else if (msg.includes('EBUSY') || msg.includes('EPERM') || msg.includes('EACCES')) code = 'FILE_BUSY'
     else if (msg.includes('Vérification')) code = 'VERIFY_FAILED'
+    return { error: code, detail: msg.slice(0, 500) }
+  }
+})
+
+// ----- Édition du personnage (Level.sav + <PlayerUId>.sav, backups auto) -----
+ipcMain.handle('save:edit-player', async (_e, payload) => {
+  const { levelPath, uid, instanceId, charSet, saveData, makeGuildMaster } = payload || {}
+  if (!levelPath || !uid) return { error: 'ERROR', detail: 'Paramètres manquants' }
+  try {
+    const out = await editPlayer({ levelPath, uid, instanceId, charSet, saveData, makeGuildMaster, editScript: pyScriptPath('edit_save.py') })
+    return { ok: true, backups: out.backups, verified: out.verified }
+  } catch (e) {
+    const msg = String(e.message || e)
+    let code = 'ERROR'
+    if (msg.includes('PYTHON_MISSING')) code = 'PYTHON_MISSING'
+    else if (msg.includes('EBUSY') || msg.includes('EPERM') || msg.includes('EACCES')) code = 'FILE_BUSY'
+    else if (msg.includes('Vérification')) code = 'VERIFY_FAILED'
+    else if (msg.includes('introuvable')) code = 'PLAYER_SAV_MISSING'
+    return { error: code, detail: msg.slice(0, 500) }
+  }
+})
+
+// ----- Fix host save : échange l'identité de deux joueurs (multi -> solo) -----
+ipcMain.handle('save:fix-host', async (_e, payload) => {
+  const { levelPath, uid1, uid2 } = payload || {}
+  if (!levelPath || !uid1 || !uid2) return { error: 'ERROR', detail: 'Paramètres manquants' }
+  if (String(uid1).toLowerCase() === String(uid2).toLowerCase()) return { error: 'ERROR', detail: 'Les deux joueurs sont identiques' }
+  try {
+    const out = await fixHostSave({ levelPath, uid1, uid2, editScript: pyScriptPath('fix_host_save.py') })
+    return { ok: true, backupDir: out.backupDir, counts: out.result.counts }
+  } catch (e) {
+    const msg = String(e.message || e)
+    let code = 'ERROR'
+    if (msg.includes('PYTHON_MISSING')) code = 'PYTHON_MISSING'
+    else if (msg.includes('EBUSY') || msg.includes('EPERM') || msg.includes('EACCES')) code = 'FILE_BUSY'
+    else if (msg.includes('Vérification')) code = 'VERIFY_FAILED'
+    else if (msg.includes('introuvable')) code = 'PLAYER_SAV_MISSING'
+    return { error: code, detail: msg.slice(0, 500) }
+  }
+})
+
+// ----- Sauvegardes de secours : liste + restauration -----
+ipcMain.handle('save:list-backups', async (_e, payload) => {
+  const { levelPath } = payload || {}
+  if (!levelPath) return { error: 'ERROR' }
+  try {
+    return { ok: true, backups: listBackups({ levelPath }) }
+  } catch (e) {
+    return { error: 'ERROR', detail: String(e.message || e).slice(0, 400) }
+  }
+})
+
+ipcMain.handle('save:restore-backup', async (_e, payload) => {
+  const { backupPath } = payload || {}
+  if (!backupPath) return { error: 'ERROR' }
+  try {
+    const out = restoreBackup({ backupPath })
+    return { ok: true, target: out.target }
+  } catch (e) {
+    const msg = String(e.message || e)
+    let code = 'ERROR'
+    if (msg.includes('EBUSY') || msg.includes('EPERM') || msg.includes('EACCES')) code = 'FILE_BUSY'
+    return { error: code, detail: msg.slice(0, 400) }
+  }
+})
+
+// ----- Lecture de l'inventaire d'un joueur (à la demande, via palsav) -----
+ipcMain.handle('save:read-inventory', async (_e, payload) => {
+  const { levelPath, uid } = payload || {}
+  if (!levelPath || !uid) return { error: 'ERROR', detail: 'Paramètres manquants' }
+  try {
+    const inv = await readInventory({ levelPath, uid, readScript: pyScriptPath('read_inventory.py') })
+    return { ok: true, inventory: inv }
+  } catch (e) {
+    const msg = String(e.message || e)
+    let code = 'ERROR'
+    if (msg.includes('PYTHON_MISSING')) code = 'PYTHON_MISSING'
+    else if (msg.includes('introuvable')) code = 'PLAYER_SAV_MISSING'
     return { error: code, detail: msg.slice(0, 500) }
   }
 })

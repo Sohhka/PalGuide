@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react'
-import { X, Save, Loader2, Star, AlertTriangle, Check, Plus, Trash2, ShieldAlert } from 'lucide-react'
-import { palByKey, standardPassives } from '../data'
+import { useEffect, useMemo, useState } from 'react'
+import { X, Save, Loader2, Star, AlertTriangle, Check, Plus, Trash2, ShieldAlert, Swords } from 'lucide-react'
+import { palByKey, standardPassives, loadSkillsCatalog, type SkillsCatalog } from '../data'
 import { useStore } from '../store/useStore'
 import { PalIcon } from './PalIcon'
 import type { ImportedPal } from '../lib/types'
 
 const MAX_PASSIVES = 4
+const MAX_SKILLS = 3
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(n || 0)))
 
 /** Correspondance clé de passif -> nom lisible (pour l'affichage). */
@@ -33,6 +34,9 @@ export function PalEditModal({
   const [stars, setStars] = useState(pal.stars)
   const [gender, setGender] = useState(pal.gender)
   const [passives, setPassives] = useState<string[]>(pal.passives)
+  const [skills, setSkills] = useState<string[]>(pal.activeSkills ?? [])
+  const [cat, setCat] = useState<SkillsCatalog | null>(null)
+  useEffect(() => { loadSkillsCatalog().then(setCat) }, [])
 
   const [saving, setSaving] = useState(false)
   const [result, setResult] = useState<{ ok: true; backupPath?: string } | { ok: false; msg: string } | null>(null)
@@ -49,8 +53,11 @@ export function PalEditModal({
     if (gender && gender !== pal.gender) s.Gender = gender === 'female' ? 'Female' : 'Male'
     const passSame = passives.length === pal.passives.length && passives.every((p, i) => p === pal.passives[i])
     if (!passSame) s.PassiveSkillList = passives
+    const cur = pal.activeSkills ?? []
+    const skillsSame = skills.length === cur.length && skills.every((k, i) => k === cur[i])
+    if (!skillsSame) s.EquipWaza = skills
     return s
-  }, [nickname, level, hp, shot, defense, stars, gender, passives, pal])
+  }, [nickname, level, hp, shot, defense, stars, gender, passives, skills, pal])
 
   const changedCount = Object.keys(set).length
   const canSave = changedCount > 0 && !!pal.instanceId && !saving
@@ -59,6 +66,15 @@ export function PalEditModal({
     () => standardPassives.filter((p) => !passives.includes(p.key)),
     [passives],
   )
+
+  const skillMap = useMemo(() => new Map((cat?.skills ?? []).map((s) => [s.id, s])), [cat])
+  const skillName = (id: string) => skillMap.get(id)?.name ?? id
+  const availableSkills = useMemo(() => {
+    if (!cat) return []
+    const learn = cat.learn[pal.palKey ?? pal.species] ?? cat.learn[pal.species] ?? []
+    const ids = learn.length ? learn : cat.skills.map((s) => s.id)
+    return ids.filter((id) => !skills.includes(id) && skillMap.has(id))
+  }, [cat, pal, skills, skillMap])
 
   const save = async () => {
     if (!pal.instanceId || !window.electronAPI?.editSave) return
@@ -87,6 +103,7 @@ export function PalEditModal({
         stars,
         gender,
         passives,
+        activeSkills: skills,
       })
       setResult({ ok: true, backupPath: res.backupPath })
     } catch (e) {
@@ -187,6 +204,36 @@ export function PalEditModal({
                   <option value="">Ajouter un passif…</option>
                   {availablePassives.map((p) => (
                     <option key={p.key} value={p.key}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Compétences actives */}
+          <div>
+            <div className="hud-h mb-2 flex items-center gap-2 text-sm">
+              <Swords size={14} /> Compétences actives <span className="text-xs font-normal text-[var(--color-faint)]">{skills.length}/{MAX_SKILLS}</span>
+            </div>
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {skills.length === 0 && <span className="text-xs text-[var(--color-faint)]">Aucune compétence équipée.</span>}
+              {skills.map((id) => (
+                <span key={id} className="chip flex items-center gap-1 border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+                  {skillName(id)}
+                  <button onClick={() => setSkills((ss) => ss.filter((s) => s !== id))} className="text-[var(--color-faint)] hover:text-[var(--color-bad)]" aria-label="Retirer">
+                    <Trash2 size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            {skills.length < MAX_SKILLS && (
+              <div className="flex items-center gap-2">
+                <Plus size={14} className="text-[var(--color-faint)]" />
+                <select className="input w-auto flex-1" value=""
+                  onChange={(e) => { if (e.target.value) setSkills((ss) => [...ss, e.target.value]) }}>
+                  <option value="">{cat ? 'Ajouter une compétence…' : 'Chargement…'}</option>
+                  {availableSkills.map((id) => (
+                    <option key={id} value={id}>{skillName(id)}{skillMap.get(id)?.element ? ` · ${skillMap.get(id)!.element}` : ''}</option>
                   ))}
                 </select>
               </div>

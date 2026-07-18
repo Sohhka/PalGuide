@@ -13,4 +13,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   importSave: () => ipcRenderer.invoke('save:import'),
   editSave: (payload) => ipcRenderer.invoke('save:edit', payload),
+  editPlayer: (payload) => ipcRenderer.invoke('save:edit-player', payload),
+  readInventory: (payload) => ipcRenderer.invoke('save:read-inventory', payload),
+  listBackups: (payload) => ipcRenderer.invoke('save:list-backups', payload),
+  restoreBackup: (payload) => ipcRenderer.invoke('save:restore-backup', payload),
+  fixHostSave: (payload) => ipcRenderer.invoke('save:fix-host', payload),
 })

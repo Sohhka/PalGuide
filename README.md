@@ -20,6 +20,15 @@ Paldex complet · Calculateur de reproduction (chemins complets) · Taux de capt
 - 🎒 **Objets** — recherche un objet pour voir **tous les Pals qui le lâchent**, avec la quantité et le taux de drop. Inclut les **plans (schematics) d'armes et d'armures** — de rareté rare à **légendaire** — avec le **boss/Pal qui les lâche** et s'ils sont aussi **trouvables en coffre**.
 - ⚔️ **Équipement** — base des **armes, armures, planeurs et accessoires** avec leurs **stats par rareté** (Commun → Légendaire) et leurs **matériaux de fabrication**.
 - 🎮 **Ma partie** — importe la **sauvegarde de ta partie** Palworld pour récupérer tes Pals (équipe, boîte, base) avec leurs **niveaux, IVs, passifs et étoiles de condensation**. Alimente aussi le path finder et le générateur d'équipe. *(Import : app de bureau, nécessite Python — voir plus bas.)*
+- ✏️ **Éditeur de sauvegarde** — modifie ta partie depuis « Ma partie » :
+  - **Pals** : IVs, niveau (XP recalculée), condensation, genre, surnom, passifs et **compétences actives**.
+  - **Créer n'importe quel Pal** — fais apparaître l'espèce de ton choix dans ta boîte (niveau/IVs/passifs choisis).
+  - **Personnage** : niveau, points de statut, points de technologie, ou **débloquer toutes les technologies** d'un clic.
+  - **Inventaire** : quantités, retrait et **ajout d'objets** depuis un catalogue de 2400+ items (noms en français).
+  - **Multijoueur → solo** : rejoue en solo une sauvegarde multijoueur (échange de GUID), et **transfère le rôle de maître de guilde**.
+  - **Restaurer** une sauvegarde de secours en un clic.
+
+  Une **sauvegarde de secours horodatée** est créée avant chaque écriture, et chaque modification est **revérifiée par relecture**. Compatible solo et **multijoueur / serveur dédié**.
 - 👥 **Team Builder** — équipe de 5, partner skills, **détection des cumuls** (stacking), synergies, couverture élémentaire et aptitudes de travail cumulées. **Générateur d'équipe par description** : écris ce que tu veux (« team endgame qui augmente mes dégâts », « des mineurs pour ma base », « team feu avec Jetragon »…) et PalGuide compose une équipe optimisée — objectif détecté, cumuls respectés, **étoiles de condensation** prises en compte, et **Pals imposés** si tu en nommes. Sauvegarde plusieurs **builds** (presets) que tu peux recharger et modifier.
 - 🗺️ **Carte interactive** — carte du monde zoomable/déplaçable avec de nombreux **calques activables** : voyage rapide (colorés **débloqués/verrouillés** selon ta partie), tours de boss, tes bases, **coffres, œufs, effigies, donjons, PNJ, marchands, arbres à fruits, spots de pêche, minerais**… Choisis un Pal pour voir ses **lieux d'apparition** (points rouges). Marqueurs à taille constante, survol pour le détail.
 - 📝 **Notes & projets** — carnet local pour planifier tes objectifs.
@@ -61,6 +70,18 @@ Survole un Pal pour un aperçu rapide, clique pour ouvrir sa fiche complète :
 ### Carte interactive
 
 ![Carte interactive — calques, voyage rapide, apparitions de Pals](https://medias.lerobro.com/screenshots/Sohhka/firefox_FkJzPFc7wC.png)
+
+### Éditeur de sauvegarde
+
+Édite tes Pals, ton personnage et ton inventaire directement dans ta partie (sauvegarde de secours automatique avant chaque écriture).
+
+| Édition d'un Pal | Édition du personnage | Édition de l'inventaire |
+|:---:|:---:|:---:|
+| ![Édition d'un Pal](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_eMCCJgskTb.png) | ![Édition du personnage](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_NLrmOedrXz.png) | ![Édition de l'inventaire](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_ylzQAu5yLH.png) |
+
+| Création d'un Pal | Sauvegarde multijoueur → solo |
+|:---:|:---:|
+| ![Création d'un Pal](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_BGcWxIsY7t.png) | ![Sauvegarde multijoueur vers solo](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_ewQTa06YIj.png) |
 
 ## ⬇️ Installation (utilisateurs)
 
@@ -136,6 +157,7 @@ Electron · Vite · React · TypeScript · Tailwind CSS v4 · Zustand · React R
 
 - Données : **PalCalc** (MIT) et **paldb.cc**. Merci à leurs auteurs.
 - Données de la **carte interactive** : fond de carte, voyage rapide et tours via **[PalworldSaveTools](https://github.com/deafdudecomputers/PalworldSaveTools)** (MIT, deafdudecomputers) et **palworld-coord** ; emplacements (coffres, œufs, effigies, donjons, PNJ…), **lieux d'apparition des Pals**, **base d'équipement** (armes/armures/planeurs/accessoires) et **plans lâchés par les boss** via **[paldb.cc](https://paldb.cc)**. Merci à leurs auteurs.
+- **Éditeur de sauvegarde** : moteur de lecture/écriture GVAS **`palsav`** de **[PalworldSaveTools](https://github.com/deafdudecomputers/PalworldSaveTools)** (MIT, round-trip 1.0 prouvé), catalogues d'items/technologies/compétences et table d'XP de PalworldSaveTools, noms d'items en français via **[paldb.cc](https://paldb.cc)**. Merci à leurs auteurs.
 - Application développée avec l'aide de **Claude** (Anthropic).
 - Projet **non affilié** à Pocketpair. « Palworld » et les noms/images de Pals appartiennent à leurs propriétaires respectifs. Ce projet est fourni à des fins d'information pour la communauté.
 

@@ -44,6 +44,8 @@ interface AppState {
   clearImportedSave: () => void
   /** met à jour un Pal importé (après une édition écrite dans la save) */
   patchImportedPal: (instanceId: string, patch: Partial<ImportedSave['pals'][number]>) => void
+  /** met à jour un joueur importé (après une édition écrite dans la save) */
+  patchImportedPlayer: (uid: string, patch: Partial<ImportedSave['players'][number]>) => void
   // Personnage sélectionné (saves coop/serveur multijoueur)
   selectedPlayerUid: string | null
   setSelectedPlayerUid: (uid: string | null) => void
@@ -128,6 +130,19 @@ export const useStore = create<AppState>()(
                   ...s.importedSave,
                   pals: s.importedSave.pals.map((p) =>
                     p.instanceId === instanceId ? { ...p, ...patch } : p,
+                  ),
+                },
+              }
+            : {},
+        ),
+      patchImportedPlayer: (uid, patch) =>
+        set((s) =>
+          s.importedSave
+            ? {
+                importedSave: {
+                  ...s.importedSave,
+                  players: s.importedSave.players.map((p) =>
+                    p.uid === uid ? { ...p, ...patch } : p,
                   ),
                 },
               }

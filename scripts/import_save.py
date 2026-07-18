@@ -196,8 +196,22 @@ def extract_bases(lvl):
     return bases
 
 
+def status_points(sp):
+    """Points de statut du joueur : { nom (japonais) -> points }."""
+    out = {}
+    try:
+        for it in scalar(sp.get("GotStatusPointList", {})).get("values", []):
+            nm = it.get("StatusName", {}).get("value")
+            pt = it.get("StatusPoint", {}).get("value")
+            if isinstance(nm, str) and isinstance(pt, int):
+                out[nm] = pt
+    except Exception:
+        pass
+    return out
+
+
 def extract(level_path, player_paths):
-    # --- Saves joueurs : party + palbox + voyage rapide débloqué par joueur ---
+    # --- Saves joueurs : party + palbox + voyage rapide + points de techno par joueur ---
     players_by_uid = {}
     for pf in player_paths:
         try:
@@ -210,6 +224,8 @@ def extract(level_path, player_paths):
                     "party": player_container(sd, "OtomoCharacterContainerId"),
                     "palbox": player_container(sd, "PalStorageContainerId"),
                     "fastTravel": unlocked_flags(rec, "FastTravelPointUnlockFlag"),
+                    "techPoint": scalar(sd.get("TechnologyPoint", {})) if "TechnologyPoint" in sd else None,
+                    "bossTechPoint": scalar(sd.get("bossTechnologyPoint", {})) if "bossTechnologyPoint" in sd else None,
                 }
         except Exception:
             continue
@@ -232,7 +248,15 @@ def extract(level_path, player_paths):
         key_uid = guid_str(e["key"].get("PlayerUId"))
         if is_player:
             name = scalar(sp.get("NickName", {}))
-            players[key_uid] = name if isinstance(name, str) else players.get(key_uid)
+            lvl_p = scalar(sp.get("Level", {}))
+            exp_p = scalar(sp.get("Exp", {}))
+            players[key_uid] = {
+                "name": name if isinstance(name, str) else (players.get(key_uid) or {}).get("name"),
+                "instanceId": guid_str(e["key"].get("InstanceId")),
+                "level": lvl_p if isinstance(lvl_p, int) else 1,
+                "exp": exp_p if isinstance(exp_p, int) else 0,
+                "statusPoints": status_points(sp),
+            }
             continue
 
         cid = scalar(sp.get("CharacterID", {}))
@@ -272,6 +296,14 @@ def extract(level_path, player_paths):
             except Exception:
                 passives = []
 
+        active_skills = []
+        ew = sp.get("EquipWaza")
+        if ew:
+            try:
+                active_skills = [str(w).replace("EPalWazaID::", "") for w in scalar(ew)["values"]]
+            except Exception:
+                active_skills = []
+
         nick = scalar(sp.get("NickName", {}))
         lvl_v = scalar(sp.get("Level", {}))
 
@@ -296,6 +328,7 @@ def extract(level_path, player_paths):
                 "defense": scalar(sp.get("Talent_Defense", {})) if isinstance(scalar(sp.get("Talent_Defense", {})), int) else 0,
             },
             "passives": passives,
+            "activeSkills": active_skills,
             "ownerUid": owner,
             "location": location,
         })
@@ -303,10 +336,17 @@ def extract(level_path, player_paths):
     return {
         "meta": {"world": os.path.basename(os.path.dirname(level_path)), "palCount": len(pals)},
         "players": [
-            {"uid": uid, "name": players.get(uid) or "Joueur",
+            {"uid": uid, "name": pdata.get("name") or "Joueur",
              "palCount": sum(1 for p in pals if p["ownerUid"] == uid),
-             "fastTravel": (players_by_uid.get(uid) or {}).get("fastTravel", [])}
-            for uid in players
+             "fastTravel": (players_by_uid.get(uid) or {}).get("fastTravel", []),
+             "instanceId": pdata.get("instanceId"),
+             "level": pdata.get("level"),
+             "exp": pdata.get("exp"),
+             "statusPoints": pdata.get("statusPoints", {}),
+             "techPoint": (players_by_uid.get(uid) or {}).get("techPoint"),
+             "bossTechPoint": (players_by_uid.get(uid) or {}).get("bossTechPoint"),
+             "palboxId": (players_by_uid.get(uid) or {}).get("palbox")}
+            for uid, pdata in players.items()
         ],
         "bases": bases,
         "pals": pals,
