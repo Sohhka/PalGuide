@@ -36,6 +36,55 @@ def _lenient_decode_bytes(parent_reader, char_bytes):
 
 _char.decode_bytes = _lenient_decode_bytes
 
+
+# --- Tolérance du lecteur générique pour les saves 1.0 / multijoueur -----------
+# palworld-save-tools 0.24.0 (dernière version PyPI) ne sait pas décoder certaines
+# structures présentes dans les grosses saves multijoueur : valeurs de map Int64
+# (ex. LevelObjectRecoverPartySaveData.PlayerLastUsedTimes) et SetProperty
+# (ex. InLockerCharacterInstanceIDArray). On n'a besoin que de la carte des
+# personnages : on lit ces valeurs quand c'est trivial, on saute le reste.
+from palworld_save_tools.archive import FArchiveReader
+
+_orig_prop_value = FArchiveReader.prop_value
+
+
+def _lenient_prop_value(self, type_name, struct_type_name, path):
+    # Valeurs de map primitives non gérées par 0.24.0 (lues telles quelles).
+    prim = {
+        "Int64Property": self.i64,
+        "UInt64Property": self.u64,
+        "UInt32Property": self.u32,
+        "Int16Property": self.i16,
+        "UInt16Property": self.u16,
+        "FloatProperty": self.float,
+        "DoubleProperty": self.double,
+        "StrProperty": self.fstring,
+    }
+    fn = prim.get(type_name)
+    if fn is not None:
+        return fn()
+    return _orig_prop_value(self, type_name, struct_type_name, path)
+
+
+FArchiveReader.prop_value = _lenient_prop_value
+
+_orig_property = FArchiveReader.property
+
+
+def _lenient_property(self, type_name, size, path, nested_caller_path=""):
+    # SetProperty n'est pas géré par 0.24.0 : on lit l'en-tête (type d'élément +
+    # guid optionnel) puis on saute le cœur (size octets). Non nécessaire ici.
+    if type_name == "SetProperty":
+        self.fstring()          # type d'élément
+        self.optional_guid()
+        self.skip(size)
+        return {"skipped": True, "type": type_name}
+    return _orig_property(self, type_name, size, path, nested_caller_path)
+
+
+FArchiveReader.property = _lenient_property
+
+
 # On ne décode en profondeur QUE la carte des personnages (le reste = octets bruts,
 # ce qui évite les décodeurs périmés (map objects, etc.) et accélère le parsing).
 _CHAR_KEY = ".worldSaveData.CharacterSaveParameterMap.Value.RawData"
