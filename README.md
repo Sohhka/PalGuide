@@ -48,7 +48,7 @@ Survole un Pal pour un aperçu rapide, clique pour ouvrir sa fiche complète :
 
 | Taux de capture | Composition d'équipe | Notes & projets |
 |:---:|:---:|:---:|
-| ![Calculateur de taux de capture](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_lcL6rPAwFU.png) | ![Composition d'équipe](https://medias.lerobro.com/firefox_GLFq1F1dPM.png) | ![Notes & projets](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_hMoLB0Wrf6.png) |
+| ![Calculateur de taux de capture](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_lcL6rPAwFU.png) | ![Composition d'équipe](https://medias.lerobro.com/screenshots/Sohhka/firefox_GLFq1F1dPM.png) | ![Notes & projets](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_hMoLB0Wrf6.png) |
 
 ### Recherche d'objets
 
