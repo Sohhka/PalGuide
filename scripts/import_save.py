@@ -85,10 +85,38 @@ def _lenient_property(self, type_name, size, path, nested_caller_path=""):
 FArchiveReader.property = _lenient_property
 
 
-# On ne décode en profondeur QUE la carte des personnages (le reste = octets bruts,
-# ce qui évite les décodeurs périmés (map objects, etc.) et accélère le parsing).
+# Décodeur des camps de base tolérant (le transform est lu avant le check EOF, que
+# le format 1.0 fait échouer à cause d'octets en trop — comme pour les persos).
+import palworld_save_tools.rawdata.base_camp as _base_camp
+
+
+def _lenient_base_camp_decode_bytes(parent_reader, b_bytes):
+    # Lecture défensive : si une base a un format inattendu, on renvoie ce qu'on a
+    # pu lire (le transform si atteint) sans casser tout l'import — le blob a déjà
+    # été consommé côté flux, seule son interprétation échoue.
+    r = parent_reader.internal_copy(bytes(b_bytes), debug=False)
+    data = {}
+    try:
+        data["id"] = r.guid()
+        data["name"] = r.fstring()
+        data["state"] = r.byte()
+        data["transform"] = r.ftransform()
+        data["area_range"] = r.float()
+        data["group_id_belong_to"] = r.guid()
+        data["fast_travel_local_transform"] = r.ftransform()
+        data["owner_map_object_instance_id"] = r.guid()
+    except Exception:
+        pass
+    return data
+
+
+_base_camp.decode_bytes = _lenient_base_camp_decode_bytes
+
+# On décode en profondeur la carte des personnages + les camps de base (positions).
+# Le reste = octets bruts (évite les décodeurs périmés (map objects, etc.) + accélère).
 _CHAR_KEY = ".worldSaveData.CharacterSaveParameterMap.Value.RawData"
-CUSTOM = {_CHAR_KEY: PALWORLD_CUSTOM_PROPERTIES[_CHAR_KEY]}
+_BASE_KEY = ".worldSaveData.BaseCampSaveData.Value.RawData"
+CUSTOM = {k: PALWORLD_CUSTOM_PROPERTIES[k] for k in (_CHAR_KEY, _BASE_KEY) if k in PALWORLD_CUSTOM_PROPERTIES}
 
 
 def read_gvas(path):
@@ -134,8 +162,42 @@ def normalize_species(cid):
     return cid
 
 
+def unlocked_flags(record_data, field):
+    """GUIDs (minuscule, sans tiret) des drapeaux à True dans record_data[field]."""
+    out = []
+    try:
+        for e in scalar(record_data[field]):
+            if scalar(e.get("value")) in (True, 1):
+                k = guid_str(e.get("key"))
+                if k:
+                    out.append(k.replace("-", ""))
+    except Exception:
+        pass
+    return out
+
+
+def extract_bases(lvl):
+    """Positions monde des camps de base (x,y,z) + guilde d'appartenance."""
+    bases = []
+    try:
+        bcs = lvl.properties["worldSaveData"]["value"]["BaseCampSaveData"]["value"]
+    except Exception:
+        return bases
+    for b in bcs:
+        try:
+            rd = b["value"]["RawData"]["value"]
+            t = rd["transform"]["translation"]
+            bases.append({
+                "x": t["x"], "y": t["y"], "z": t["z"],
+                "group": guid_str(rd.get("group_id_belong_to")),
+            })
+        except Exception:
+            continue
+    return bases
+
+
 def extract(level_path, player_paths):
-    # --- Saves joueurs : party + palbox par joueur ---
+    # --- Saves joueurs : party + palbox + voyage rapide débloqué par joueur ---
     players_by_uid = {}
     for pf in player_paths:
         try:
@@ -143,14 +205,17 @@ def extract(level_path, player_paths):
             sd = pl.properties["SaveData"]["value"]
             uid = guid_str(sd.get("PlayerUId"))
             if uid:
+                rec = scalar(sd.get("RecordData")) if "RecordData" in sd else {}
                 players_by_uid[uid] = {
                     "party": player_container(sd, "OtomoCharacterContainerId"),
                     "palbox": player_container(sd, "PalStorageContainerId"),
+                    "fastTravel": unlocked_flags(rec, "FastTravelPointUnlockFlag"),
                 }
         except Exception:
             continue
 
     lvl = read_gvas(level_path)
+    bases = extract_bases(lvl)
     chars = lvl.properties["worldSaveData"]["value"]["CharacterSaveParameterMap"]["value"]
 
     def sp_of(e):
@@ -239,9 +304,11 @@ def extract(level_path, player_paths):
         "meta": {"world": os.path.basename(os.path.dirname(level_path)), "palCount": len(pals)},
         "players": [
             {"uid": uid, "name": players.get(uid) or "Joueur",
-             "palCount": sum(1 for p in pals if p["ownerUid"] == uid)}
+             "palCount": sum(1 for p in pals if p["ownerUid"] == uid),
+             "fastTravel": (players_by_uid.get(uid) or {}).get("fastTravel", [])}
             for uid in players
         ],
+        "bases": bases,
         "pals": pals,
     }
 

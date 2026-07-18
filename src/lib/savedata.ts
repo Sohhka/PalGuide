@@ -1,5 +1,5 @@
 import { palByKey } from '../data'
-import type { ImportedPal, ImportedSave, PalLocation } from './types'
+import type { ImportedPal, ImportedSave, PalLocation, SaveBase } from './types'
 
 const LOCATION_ORDER: Record<PalLocation, number> = { party: 0, palbox: 1, base: 2 }
 
@@ -11,7 +11,8 @@ export const LOCATION_LABEL: Record<PalLocation, string> = {
 
 interface RawImport {
   meta: { world: string; palCount: number }
-  players: { uid: string; name: string; palCount: number }[]
+  players: { uid: string; name: string; palCount: number; fastTravel?: string[] }[]
+  bases?: SaveBase[]
   pals: {
     instanceId: string | null
     species: string
@@ -49,7 +50,22 @@ export function resolveImport(raw: RawImport): ImportedSave {
     importedAt: Date.now(),
     players: raw.players,
     pals,
+    bases: Array.isArray(raw.bases) ? raw.bases : [],
   }
+}
+
+/** Bases de la save (positions monde), filtrées sur la guilde du personnage si connue. */
+export function basesFromImport(save: ImportedSave | null): SaveBase[] {
+  return save?.bases ?? []
+}
+
+/** GUIDs (minuscule, sans tiret) des points de voyage rapide débloqués par le personnage. */
+export function fastTravelUnlocked(save: ImportedSave | null, ownerUid?: string | null): Set<string> {
+  if (!save) return new Set()
+  const player = ownerUid
+    ? save.players.find((p) => p.uid === ownerUid)
+    : [...save.players].sort((a, b) => b.palCount - a.palCount)[0]
+  return new Set(player?.fastTravel ?? [])
 }
 
 /** Pals de la save, filtrés sur un personnage (uid) si fourni. */

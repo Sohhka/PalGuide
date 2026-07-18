@@ -9,6 +9,7 @@ import { ItemsPage } from './pages/ItemsPage'
 import { TeamBuilderPage } from './pages/TeamBuilderPage'
 import { NotesPage } from './pages/NotesPage'
 import { DataImportPage } from './pages/DataImportPage'
+import { MapPage } from './pages/MapPage'
 import { AboutPage } from './pages/AboutPage'
 
 // HashRouter : fonctionne sans config serveur (ouverture directe du build, GitHub Pages, etc.)
@@ -27,6 +28,7 @@ export const router = createHashRouter([
       { path: 'equipe', element: <TeamBuilderPage /> },
       { path: 'notes', element: <NotesPage /> },
       { path: 'ma-partie', element: <DataImportPage /> },
+      { path: 'carte', element: <MapPage /> },
       { path: 'a-propos', element: <AboutPage /> },
       { path: '*', element: <Navigate to="/paldex" replace /> },
     ],

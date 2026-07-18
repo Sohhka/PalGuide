@@ -115,7 +115,14 @@ export function PanZoom({ children, height = '74vh' }: { children: ReactNode; he
     >
       <div
         ref={contentRef}
-        style={{ transform: `translate(${t.x}px, ${t.y}px) scale(${t.k})`, transformOrigin: '0 0', width: 'max-content' }}
+        style={{
+          transform: `translate(${t.x}px, ${t.y}px) scale(${t.k})`,
+          transformOrigin: '0 0',
+          width: 'max-content',
+          // exposé aux enfants : permet aux marqueurs de garder une taille écran constante
+          // via scale(calc(1 / var(--pz-scale)))
+          ['--pz-scale' as string]: t.k,
+        }}
       >
         {children}
       </div>

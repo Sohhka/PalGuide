@@ -137,9 +137,24 @@ export interface ImportedPal {
   ownerUid: string | null
 }
 
+export interface SaveBase {
+  x: number
+  y: number
+  z: number
+  group: string | null // GUID de la guilde propriétaire
+}
+
+export interface SavePlayer {
+  uid: string
+  name: string
+  palCount: number
+  fastTravel?: string[] // GUIDs (minuscule, sans tiret) des points de voyage rapide débloqués
+}
+
 export interface ImportedSave {
   world: string
   importedAt: number
-  players: { uid: string; name: string; palCount: number }[]
+  players: SavePlayer[]
   pals: ImportedPal[]
+  bases?: SaveBase[]
 }
