@@ -157,4 +157,6 @@ export interface ImportedSave {
   players: SavePlayer[]
   pals: ImportedPal[]
   bases?: SaveBase[]
+  /** chemin du Level.sav source (pour l'éditeur ; app de bureau uniquement) */
+  levelPath?: string
 }

@@ -10,11 +10,13 @@ import {
   Box,
   Home,
   Swords,
+  Pencil,
 } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PalIcon } from '../components/PalIcon'
 import { PalTypeBadges, StarRow } from '../components/badges'
 import { PalDetailModal } from '../components/PalDetailModal'
+import { PalEditModal } from '../components/PalEditModal'
 import { palByKey } from '../data'
 import { useStore } from '../store/useStore'
 import { resolveImport, LOCATION_LABEL, ivTotal, palsOfPlayer } from '../lib/savedata'
@@ -27,6 +29,7 @@ export function DataImportPage() {
   const { importedSave, setImportedSave, clearImportedSave, selectedPlayerUid, setSelectedPlayerUid } = useStore()
   const isElectron = !!window.electronAPI
   const multiplayer = (importedSave?.players.length ?? 0) > 1
+  const canEdit = isElectron && !!window.electronAPI?.editSave && !!importedSave?.levelPath
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<{ code: string; detail?: string } | null>(null)
 
@@ -34,6 +37,7 @@ export function DataImportPage() {
   const [locFilter, setLocFilter] = useState<PalLocation | ''>('')
   const [sort, setSort] = useState<'level' | 'iv' | 'name'>('level')
   const [modalPal, setModalPal] = useState<Pal | null>(null)
+  const [editingPal, setEditingPal] = useState<ImportedPal | null>(null)
 
   const doImport = async () => {
     if (!window.electronAPI) return
@@ -48,7 +52,7 @@ export function DataImportPage() {
       }
       if (res.ok && res.data) {
         // REMPLACE toujours (aucune fusion avec un import précédent)
-        setImportedSave(resolveImport(res.data))
+        setImportedSave({ ...resolveImport(res.data), levelPath: res.levelPath })
       }
     } catch (e) {
       setError({ code: 'ERROR', detail: String((e as Error).message) })
@@ -118,7 +122,7 @@ export function DataImportPage() {
               <p className="flex items-start gap-1.5 text-xs text-[var(--color-faint)]">
                 <Info size={14} className="mt-0.5 shrink-0" />
                 Nécessite <strong>Python</strong> + le paquet <code className="rounded bg-[var(--color-bg-soft)] px-1 py-0.5">palworld-save-tools</code>{' '}
-                (<code className="rounded bg-[var(--color-bg-soft)] px-1 py-0.5">pip install palworld-save-tools</code>). Lecture seule : ta sauvegarde n'est jamais modifiée.
+                (<code className="rounded bg-[var(--color-bg-soft)] px-1 py-0.5">pip install palworld-save-tools</code>). L'import est en lecture seule ; tu peux ensuite <strong>éditer un Pal</strong> (icône crayon) — une <strong>sauvegarde de secours</strong> est créée avant toute écriture.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -219,13 +223,16 @@ export function DataImportPage() {
           <div className="mb-2 text-sm text-[var(--color-muted)]">{filtered.length} Pal{filtered.length > 1 ? 's' : ''}</div>
           <div className="grid gap-2 lg:grid-cols-2">
             {filtered.map((p, i) => (
-              <ImportedPalRow key={p.instanceId ?? i} pal={p} onOpen={setModalPal} />
+              <ImportedPalRow key={p.instanceId ?? i} pal={p} onOpen={setModalPal} onEdit={canEdit ? setEditingPal : undefined} />
             ))}
           </div>
         </>
       )}
 
       <PalDetailModal pal={modalPal} onClose={() => setModalPal(null)} />
+      {editingPal && importedSave?.levelPath && (
+        <PalEditModal pal={editingPal} levelPath={importedSave.levelPath} onClose={() => setEditingPal(null)} />
+      )}
     </>
   )
 }
@@ -255,36 +262,41 @@ function IvBar({ label, value }: { label: string; value: number }) {
   )
 }
 
-function ImportedPalRow({ pal, onOpen }: { pal: ImportedPal; onOpen: (p: Pal) => void }) {
+function ImportedPalRow({ pal, onOpen, onEdit }: { pal: ImportedPal; onOpen: (p: Pal) => void; onEdit?: (p: ImportedPal) => void }) {
   const p = pal.palKey ? palByKey.get(pal.palKey) : null
   if (!p) return null
   const LocIcon = LOC_ICON[pal.location]
   return (
-    <button
-      onClick={() => onOpen(p)}
-      className="flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 text-left transition-colors hover:border-[var(--color-brand)] hover:bg-[var(--color-surface-2)]"
-    >
-      <PalIcon pal={p} size={44} ring />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate font-bold">{pal.nickname || p.name}</span>
-          {pal.nickname && <span className="truncate text-xs text-[var(--color-faint)]">{p.name}</span>}
-          {pal.isBoss && <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-warn)]">Alpha</span>}
+    <div className="group flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 transition-colors hover:border-[var(--color-brand)] hover:bg-[var(--color-surface-2)]">
+      <button onClick={() => onOpen(p)} className="flex min-w-0 flex-1 items-center gap-3 text-left" title="Voir la fiche">
+        <PalIcon pal={p} size={44} ring />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate font-bold">{pal.nickname || p.name}</span>
+            {pal.nickname && <span className="truncate text-xs text-[var(--color-faint)]">{p.name}</span>}
+            {pal.isBoss && <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-warn)]">Alpha</span>}
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-muted)]">Niv. {pal.level}</span>
+            {pal.stars > 0 && <StarRow stars={pal.stars} />}
+            <PalTypeBadges pal={p} size="sm" />
+            <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-brand)]">
+              <LocIcon size={11} /> {LOCATION_LABEL[pal.location]}
+            </span>
+          </div>
         </div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-muted)]">Niv. {pal.level}</span>
-          {pal.stars > 0 && <StarRow stars={pal.stars} />}
-          <PalTypeBadges pal={p} size="sm" />
-          <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-brand)]">
-            <LocIcon size={11} /> {LOCATION_LABEL[pal.location]}
-          </span>
-        </div>
-      </div>
+      </button>
       <div className="hidden shrink-0 flex-col gap-0.5 sm:flex">
         <IvBar label="PV" value={pal.iv.hp} />
         <IvBar label="ATQ" value={pal.iv.shot} />
         <IvBar label="DÉF" value={pal.iv.defense} />
       </div>
-    </button>
+      {onEdit && (
+        <button onClick={() => onEdit(pal)} title="Éditer ce Pal"
+          className="btn-icon shrink-0 self-stretch text-[var(--color-faint)] hover:text-[var(--color-brand)]">
+          <Pencil size={16} />
+        </button>
+      )}
+    </div>
   )
 }

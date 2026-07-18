@@ -1,7 +1,7 @@
 {
   "name": "palguide",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.4.0",
   "type": "module",
   "description": "PalGuide — compagnon Palworld 1.0 : Paldex, Breeding, Capture, Team Builder (FR)",
   "author": "PalGuide",
@@ -69,6 +69,18 @@
       {
         "from": "scripts/import_save.py",
         "to": "import_save.py"
+      },
+      {
+        "from": "scripts/edit_save.py",
+        "to": "edit_save.py"
+      },
+      {
+        "from": "scripts/check_pal.py",
+        "to": "check_pal.py"
+      },
+      {
+        "from": "scripts/palsav",
+        "to": "palsav"
       }
     ],
     "win": {

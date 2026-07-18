@@ -1,16 +1,18 @@
 const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron')
 const path = require('node:path')
 const { importSave } = require('./save-import.cjs')
+const { editSave } = require('./save-edit.cjs')
 
 const isDev = !!process.env.ELECTRON_DEV
 let win = null
 
-// Chemin du script Python d'import (embarqué hors-asar en prod via extraResources)
-function importScriptPath() {
+// Chemin d'un script Python embarqué (hors-asar en prod via extraResources)
+function pyScriptPath(name) {
   return isDev || !app.isPackaged
-    ? path.join(__dirname, '..', 'scripts', 'import_save.py')
-    : path.join(process.resourcesPath, 'import_save.py')
+    ? path.join(__dirname, '..', 'scripts', name)
+    : path.join(process.resourcesPath, name)
 }
+const importScriptPath = () => pyScriptPath('import_save.py')
 
 function createWindow() {
   win = new BrowserWindow({
@@ -80,12 +82,29 @@ ipcMain.handle('save:import', async () => {
   const levelPath = res.filePaths[0]
   try {
     const data = await importSave(levelPath, importScriptPath())
-    return { ok: true, data }
+    return { ok: true, data, levelPath }
   } catch (e) {
     const msg = String(e.message || e)
     let code = 'ERROR'
     if (msg.includes('PYTHON_MISSING')) code = 'PYTHON_MISSING'
     else if (msg.includes('MODULE_MISSING')) code = 'MODULE_MISSING'
+    return { error: code, detail: msg.slice(0, 500) }
+  }
+})
+
+// ----- Édition d'une sauvegarde (écrit sur le fichier d'origine, avec backup auto) -----
+ipcMain.handle('save:edit', async (_e, payload) => {
+  const { levelPath, edits } = payload || {}
+  if (!levelPath || !edits) return { error: 'ERROR', detail: 'Paramètres manquants' }
+  try {
+    const out = await editSave({ savPath: levelPath, edits, editScript: pyScriptPath('edit_save.py') })
+    return { ok: true, backupPath: out.backupPath, result: out.result, savSize: out.savSize }
+  } catch (e) {
+    const msg = String(e.message || e)
+    let code = 'ERROR'
+    if (msg.includes('PYTHON_MISSING')) code = 'PYTHON_MISSING'
+    else if (msg.includes('EBUSY') || msg.includes('EPERM') || msg.includes('EACCES')) code = 'FILE_BUSY'
+    else if (msg.includes('Vérification')) code = 'VERIFY_FAILED'
     return { error: code, detail: msg.slice(0, 500) }
   }
 })

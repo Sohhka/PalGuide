@@ -12,4 +12,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('window:maximized', listener)
   },
   importSave: () => ipcRenderer.invoke('save:import'),
+  editSave: (payload) => ipcRenderer.invoke('save:edit', payload),
 })

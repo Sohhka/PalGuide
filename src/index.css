@@ -193,6 +193,23 @@ body {
     filter: brightness(1.08);
     background: linear-gradient(180deg, var(--color-brand) 0%, var(--color-brand-2) 100%);
   }
+  .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    padding: 0.4rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition: all 0.13s ease;
+  }
+  .btn-icon:hover {
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
+    color: var(--color-ink);
+  }
 
   .input {
     background: rgba(6, 13, 22, 0.85);

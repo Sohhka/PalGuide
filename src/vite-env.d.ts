@@ -19,10 +19,31 @@ interface ImportSaveResult {
   canceled?: boolean
   error?: 'PYTHON_MISSING' | 'MODULE_MISSING' | 'ERROR'
   detail?: string
+  levelPath?: string
   data?: {
     meta: { world: string; palCount: number }
     players: { uid: string; name: string; palCount: number }[]
     pals: ImportedPalRaw[]
+  }
+}
+
+/** Une opération d'édition : sur un Pal identifié par son instanceId. */
+interface PalEditOp {
+  instanceId: string
+  set: Record<string, number | string | string[]>
+}
+
+interface EditSaveResult {
+  ok?: boolean
+  error?: 'PYTHON_MISSING' | 'FILE_BUSY' | 'VERIFY_FAILED' | 'ERROR'
+  detail?: string
+  backupPath?: string
+  savSize?: number
+  result?: {
+    verified: boolean
+    appliedCount: number
+    notFound: string[]
+    mismatches: unknown[]
   }
 }
 
@@ -34,6 +55,7 @@ interface ElectronAPI {
   isMaximized: () => Promise<boolean>
   onMaximizeChange: (cb: (value: boolean) => void) => () => void
   importSave: () => Promise<ImportSaveResult>
+  editSave: (payload: { levelPath: string; edits: { pals: PalEditOp[] } }) => Promise<EditSaveResult>
 }
 
 interface Window {
