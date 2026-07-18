@@ -20,7 +20,7 @@ Paldex complet · Calculateur de reproduction (chemins complets) · Taux de capt
 - 🎒 **Objets** — recherche un objet pour voir **tous les Pals qui le lâchent**, avec la quantité et le taux de drop.
 - 🎮 **Ma partie** — importe la **sauvegarde de ta partie** Palworld pour récupérer tes Pals (équipe, boîte, base) avec leurs **niveaux, IVs, passifs et étoiles de condensation**. Alimente aussi le path finder et le générateur d'équipe. *(Import : app de bureau, nécessite Python — voir plus bas.)*
 - 👥 **Team Builder** — équipe de 5, partner skills, **détection des cumuls** (stacking), synergies, couverture élémentaire et aptitudes de travail cumulées. **Générateur d'équipe par description** : écris ce que tu veux (« team endgame qui augmente mes dégâts », « des mineurs pour ma base », « team feu avec Jetragon »…) et PalGuide compose une équipe optimisée — objectif détecté, cumuls respectés, **étoiles de condensation** prises en compte, et **Pals imposés** si tu en nommes. Sauvegarde plusieurs **builds** (presets) que tu peux recharger et modifier.
-- 🗺️ **Carte interactive** — carte du monde zoomable/déplaçable avec les **points de voyage rapide** (colorés **débloqués/verrouillés** selon ta partie), les **tours de boss** et **tes bases**. Calques activables, marqueurs à taille constante.
+- 🗺️ **Carte interactive** — carte du monde zoomable/déplaçable avec de nombreux **calques activables** : voyage rapide (colorés **débloqués/verrouillés** selon ta partie), tours de boss, tes bases, **coffres, œufs, effigies, donjons, PNJ, marchands, arbres à fruits, spots de pêche, minerais**… Choisis un Pal pour voir ses **lieux d'apparition** (points rouges). Marqueurs à taille constante, survol pour le détail.
 - 📝 **Notes & projets** — carnet local pour planifier tes objectifs.
 
 Interface inspirée des menus du jeu, **100 % en français**, **hors-ligne** (données et images embarquées).
@@ -126,7 +126,7 @@ Electron · Vite · React · TypeScript · Tailwind CSS v4 · Zustand · React R
 ## 🤝 Crédits
 
 - Données : **PalCalc** (MIT) et **paldb.cc**. Merci à leurs auteurs.
-- Données de la **carte interactive** (fond de carte, points de voyage rapide, tours) : **[PalworldSaveTools](https://github.com/deafdudecomputers/PalworldSaveTools)** (MIT, deafdudecomputers) et **palworld-coord**. Merci à leurs auteurs.
+- Données de la **carte interactive** : fond de carte, voyage rapide et tours via **[PalworldSaveTools](https://github.com/deafdudecomputers/PalworldSaveTools)** (MIT, deafdudecomputers) et **palworld-coord** ; emplacements (coffres, œufs, effigies, donjons, PNJ…) et **lieux d'apparition des Pals** via **[paldb.cc](https://paldb.cc)**. Merci à leurs auteurs.
 - Application développée avec l'aide de **Claude** (Anthropic).
 - Projet **non affilié** à Pocketpair. « Palworld » et les noms/images de Pals appartiennent à leurs propriétaires respectifs. Ce projet est fourni à des fins d'information pour la communauté.
 

@@ -1,35 +1,35 @@
-import { useMemo, useState } from 'react'
-import { MapPin, Home, Castle } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { MapPin, Home, Castle, X, Loader2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { PageHeader } from '../components/PageHeader'
 import { PanZoom } from '../components/PanZoom'
+import { PalPickerButton } from '../components/PalPicker'
 import { useStore } from '../store/useStore'
 import { basesFromImport, fastTravelUnlocked } from '../lib/savedata'
+import { loadSpawns } from '../data'
+import type { Pal } from '../lib/types'
 import mapData from '../data/map.json'
 
-interface FastTravel {
-  guid: string
-  id: string
-  name: string
-  fx: number
-  fy: number
-}
-interface Tower {
-  guid: string
-  name: string
-  fx: number
-  fy: number
-}
+interface FastTravel { guid: string; id: string; name: string; fx: number; fy: number }
+interface Tower { guid: string; name: string; fx: number; fy: number }
+interface PoiMeta { id: string; label: string; icon: string | null }
+interface Poi { fx: number; fy: number; n?: string; lv?: number; time?: string }
 const MAP = mapData as unknown as {
   image: string
   fastTravel: FastTravel[]
   towers: Tower[]
-  bossFlagMap: Record<string, string>
+  poiMeta: PoiMeta[]
+  poi: Record<string, Poi[]>
 }
 
 const BASE_W = 1400
 
-// coords save -> fraction d'image (carte monde 1.0+, constantes « new » de palworld-coord)
+// Couleur de repli pour les catégories sans icône officielle.
+const POI_COLOR: Record<string, string> = { fishing: '#3aa6e0', ore: '#cf9a54' }
+// Calques actifs par défaut (les légers ; les gros restent à activer à la demande).
+const DEFAULT_ON = new Set(['fasttravel', 'towers', 'bases', 'effigy', 'dungeon', 'alpha'])
+
+// coords save -> fraction d'image (voyage rapide / bases, constantes « new »)
 const TRANSL_X = 375247
 const TRANSL_Y = -18
 const SCALE = 725
@@ -40,19 +40,7 @@ function savToFraction(x: number, y: number) {
 }
 const onIsland = (fx: number, fy: number) => fx >= 0 && fx <= 1 && fy >= 0 && fy <= 1
 
-function LayerToggle({
-  active,
-  onClick,
-  color,
-  icon,
-  label,
-}: {
-  active: boolean
-  onClick: () => void
-  color: string
-  icon: ReactNode
-  label: string
-}) {
+function LayerToggle({ active, onClick, color, icon, label }: { active: boolean; onClick: () => void; color: string; icon: ReactNode; label: string }) {
   return (
     <button
       onClick={onClick}
@@ -71,49 +59,40 @@ function LayerToggle({
 }
 
 function FTMarker({ f, unlocked, known }: { f: FastTravel; unlocked: boolean; known: boolean }) {
-  // known = une save est chargée (on distingue débloqué/verrouillé) ; sinon tout est neutre.
   const color = !known ? 'var(--color-brand)' : unlocked ? 'var(--color-good)' : 'var(--color-faint)'
   return (
     <div className="absolute" style={{ left: `${f.fx * 100}%`, top: `${f.fy * 100}%`, transform: 'translate(-50%, -50%)' }}>
       <div className="group relative" style={{ transform: 'scale(calc(1 / var(--pz-scale, 1)))' }}>
-        <div
-          className="rounded-full border border-white/90 shadow-[0_0_4px_rgba(0,0,0,0.85)]"
-          style={{ width: 10, height: 10, background: color, opacity: known && !unlocked ? 0.6 : 1 }}
-        />
+        <div className="rounded-full border border-white/90 shadow-[0_0_4px_rgba(0,0,0,0.85)]" style={{ width: 10, height: 10, background: color, opacity: known && !unlocked ? 0.6 : 1 }} />
         <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-ink)] shadow-lg group-hover:block">
-          {f.name}
-          {known && <span className={unlocked ? 'text-[var(--color-good)]' : 'text-[var(--color-faint)]'}> · {unlocked ? 'débloqué' : 'verrouillé'}</span>}
+          {f.name}{known && <span className={unlocked ? 'text-[var(--color-good)]' : 'text-[var(--color-faint)]'}> · {unlocked ? 'débloqué' : 'verrouillé'}</span>}
         </div>
       </div>
     </div>
   )
 }
 
-function TowerMarker({ t }: { t: Tower }) {
-  return (
-    <div className="absolute" style={{ left: `${t.fx * 100}%`, top: `${t.fy * 100}%`, transform: 'translate(-50%, -50%)' }}>
-      <div className="group relative" style={{ transform: 'scale(calc(1 / var(--pz-scale, 1)))' }}>
-        <div className="grid place-items-center rounded-sm border border-white/90 text-white shadow-[0_0_5px_rgba(0,0,0,0.9)]" style={{ width: 20, height: 20, background: 'var(--color-bad)' }}>
-          <Castle size={12} />
-        </div>
-        <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-ink)] shadow-lg group-hover:block">
-          {t.name.replace(' Entrance', '')}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function BaseMarker({ fx, fy, i }: { fx: number; fy: number; i: number }) {
+function IconOnMap({ fx, fy, size, children }: { fx: number; fy: number; size?: number; children: ReactNode }) {
   return (
     <div className="absolute" style={{ left: `${fx * 100}%`, top: `${fy * 100}%`, transform: 'translate(-50%, -50%)' }}>
-      <div className="group relative" style={{ transform: 'scale(calc(1 / var(--pz-scale, 1)))' }}>
-        <div className="grid place-items-center rounded-sm border border-white/90 text-white shadow-[0_0_5px_rgba(0,0,0,0.9)]" style={{ width: 18, height: 18, background: 'var(--rar-legendary)' }}>
-          <Home size={11} />
-        </div>
-        <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-ink)] shadow-lg group-hover:block">
-          Base #{i + 1}
-        </div>
+      <div style={{ transform: 'scale(calc(1 / var(--pz-scale, 1)))', width: size, height: size }} className="grid place-items-center">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/** Marqueur POI léger (tooltip natif via title, pour supporter des milliers de points). */
+function PoiMarker({ e, icon, color }: { e: Poi; icon: string | null; color: string }) {
+  const title = `${e.n ?? ''}${e.lv ? ` · Nv ${e.lv}` : ''}${e.time ? ` · ${e.time === 'night' ? 'nuit' : 'jour'}` : ''}`.trim()
+  return (
+    <div className="absolute" style={{ left: `${e.fx * 100}%`, top: `${e.fy * 100}%`, transform: 'translate(-50%, -50%)' }} title={title || undefined}>
+      <div style={{ transform: 'scale(calc(1 / var(--pz-scale, 1)))' }}>
+        {icon ? (
+          <img src={icon} width={20} height={20} alt="" className="block drop-shadow-[0_0_2px_rgba(0,0,0,0.9)]" loading="lazy" />
+        ) : (
+          <div className="rounded-full border border-white/70" style={{ width: 8, height: 8, background: color }} />
+        )}
       </div>
     </div>
   )
@@ -121,85 +100,108 @@ function BaseMarker({ fx, fy, i }: { fx: number; fy: number; i: number }) {
 
 export function MapPage() {
   const { importedSave, selectedPlayerUid } = useStore()
-  const [showFT, setShowFT] = useState(true)
-  const [showBases, setShowBases] = useState(true)
-  const [showTowers, setShowTowers] = useState(true)
+  const [active, setActive] = useState<Set<string>>(() => new Set(DEFAULT_ON))
+  const toggle = (id: string) => setActive((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const known = !!importedSave
   const unlockedSet = useMemo(() => fastTravelUnlocked(importedSave, selectedPlayerUid), [importedSave, selectedPlayerUid])
-  const unlockedCount = useMemo(
-    () => (known ? MAP.fastTravel.filter((f) => unlockedSet.has(f.guid)).length : 0),
-    [known, unlockedSet],
-  )
+  const unlockedCount = useMemo(() => (known ? MAP.fastTravel.filter((f) => unlockedSet.has(f.guid)).length : 0), [known, unlockedSet])
+  const bases = useMemo(() => basesFromImport(importedSave).map((b) => savToFraction(b.x, b.y)).filter((p) => onIsland(p.fx, p.fy)), [importedSave])
 
-  const bases = useMemo(() => {
-    return basesFromImport(importedSave)
-      .map((b) => savToFraction(b.x, b.y))
-      .filter((p) => onIsland(p.fx, p.fy))
-  }, [importedSave])
+  const activePoiCount = useMemo(() => MAP.poiMeta.filter((m) => active.has(m.id)).reduce((n, m) => n + MAP.poi[m.id].length, 0), [active])
+
+  // Apparition d'un Pal : points rouges à ses lieux de spawn (données chargées à la demande)
+  const [spawnPal, setSpawnPal] = useState<Pal | null>(null)
+  const [spawnPts, setSpawnPts] = useState<[number, number][]>([])
+  const [spawnLoading, setSpawnLoading] = useState(false)
+  useEffect(() => {
+    if (!spawnPal) { setSpawnPts([]); return }
+    let cancel = false
+    setSpawnLoading(true)
+    loadSpawns().then((data) => { if (!cancel) { setSpawnPts(data[spawnPal.key] ?? []); setSpawnLoading(false) } })
+    return () => { cancel = true }
+  }, [spawnPal])
 
   return (
     <>
-      <PageHeader
-        eyebrow="Carte"
-        title="Carte interactive"
-        subtitle="Explore le monde de Palworld : points de voyage rapide, tours de boss, tes bases — et bientôt les effigies."
-      />
+      <PageHeader eyebrow="Carte" title="Carte interactive" subtitle="Voyage rapide, tours, tes bases, coffres, œufs, effigies, donjons, PNJ, arbres à fruits… Active les calques." />
 
       <div className="card p-3">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-faint)]">Calques :</span>
-          <LayerToggle
-            active={showFT}
-            onClick={() => setShowFT((v) => !v)}
-            color="var(--color-brand)"
-            icon={<MapPin size={13} />}
-            label={known ? `Voyage rapide (${unlockedCount}/${MAP.fastTravel.length})` : `Voyage rapide (${MAP.fastTravel.length})`}
-          />
-          <LayerToggle
-            active={showTowers}
-            onClick={() => setShowTowers((v) => !v)}
-            color="var(--color-bad)"
-            icon={<Castle size={13} />}
-            label={`Tours (${MAP.towers.length})`}
-          />
-          <LayerToggle
-            active={showBases}
-            onClick={() => setShowBases((v) => !v)}
-            color="var(--rar-legendary)"
-            icon={<Home size={13} />}
-            label={`Bases (${bases.length})`}
-          />
-          {known && (
-            <span className="ml-1 inline-flex items-center gap-2 text-[11px] text-[var(--color-faint)]">
-              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--color-good)]" /> débloqué</span>
-              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--color-faint)] opacity-60" /> verrouillé</span>
+        {/* Apparition d'un Pal */}
+        <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-[var(--color-border-soft)] pb-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-faint)]">Apparition d'un Pal :</span>
+          <div className="w-60"><PalPickerButton value={spawnPal} onChange={setSpawnPal} placeholder="Choisir un Pal…" /></div>
+          {spawnPal && (
+            <span className="chip bg-[color-mix(in_srgb,var(--color-bad)_15%,transparent)] text-[var(--color-bad)]">
+              {spawnLoading ? <Loader2 size={12} className="animate-spin" /> : <span className="h-2 w-2 rounded-full bg-[var(--color-bad)]" />}
+              {spawnLoading ? 'chargement…' : spawnPts.length ? `${spawnPts.length} lieux d'apparition` : 'aucun spawn sauvage (boss/variant ?)'}
             </span>
           )}
+          {spawnPal && (
+            <button className="rounded p-1 text-[var(--color-faint)] hover:text-[var(--color-bad)]" onClick={() => setSpawnPal(null)} title="Effacer">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-faint)]">Calques :</span>
+          <LayerToggle active={active.has('fasttravel')} onClick={() => toggle('fasttravel')} color="var(--color-brand)" icon={<MapPin size={13} />} label={known ? `Voyage rapide (${unlockedCount}/${MAP.fastTravel.length})` : `Voyage rapide (${MAP.fastTravel.length})`} />
+          <LayerToggle active={active.has('towers')} onClick={() => toggle('towers')} color="var(--color-bad)" icon={<Castle size={13} />} label={`Tours (${MAP.towers.length})`} />
+          <LayerToggle active={active.has('bases')} onClick={() => toggle('bases')} color="var(--rar-legendary)" icon={<Home size={13} />} label={`Bases (${bases.length})`} />
+          {MAP.poiMeta.map((m) => (
+            <LayerToggle
+              key={m.id}
+              active={active.has(m.id)}
+              onClick={() => toggle(m.id)}
+              color={POI_COLOR[m.id] ?? 'var(--color-accent-2)'}
+              icon={m.icon ? <img src={m.icon} width={14} height={14} alt="" /> : <span className="h-2.5 w-2.5 rounded-full" style={{ background: POI_COLOR[m.id] ?? '#888' }} />}
+              label={`${m.label} (${MAP.poi[m.id].length})`}
+            />
+          ))}
+          {activePoiCount > 4000 && <span className="text-[10px] text-[var(--color-warn)]">Beaucoup de marqueurs actifs — le zoom peut ralentir.</span>}
         </div>
 
         <PanZoom height="74vh">
           <div className="relative select-none" style={{ width: BASE_W }}>
-            <img
-              src={MAP.image}
-              alt="Carte de Palworld"
-              draggable={false}
-              style={{ width: BASE_W, height: 'auto', display: 'block' }}
-            />
-            {showFT && MAP.fastTravel.map((f) => <FTMarker key={f.guid} f={f} known={known} unlocked={unlockedSet.has(f.guid)} />)}
-            {showTowers && MAP.towers.map((t) => <TowerMarker key={t.guid} t={t} />)}
-            {showBases && bases.map((b, i) => <BaseMarker key={i} fx={b.fx} fy={b.fy} i={i} />)}
+            <img src={MAP.image} alt="Carte de Palworld" draggable={false} style={{ width: BASE_W, height: 'auto', display: 'block' }} />
+            {/* POI (calques paldb) */}
+            {MAP.poiMeta.filter((m) => active.has(m.id)).map((m) =>
+              MAP.poi[m.id].map((e, i) => <PoiMarker key={`${m.id}${i}`} e={e} icon={m.icon} color={POI_COLOR[m.id] ?? '#aaa'} />),
+            )}
+            {/* Voyage rapide (état save) */}
+            {active.has('fasttravel') && MAP.fastTravel.map((f) => <FTMarker key={f.guid} f={f} known={known} unlocked={unlockedSet.has(f.guid)} />)}
+            {/* Tours */}
+            {active.has('towers') && MAP.towers.map((t) => (
+              <IconOnMap key={t.guid} fx={t.fx} fy={t.fy} size={20}>
+                <div className="grid place-items-center rounded-sm border border-white/90 text-white shadow-[0_0_5px_rgba(0,0,0,0.9)]" style={{ width: 20, height: 20, background: 'var(--color-bad)' }} title={t.name.replace(' Entrance', '')}>
+                  <Castle size={12} />
+                </div>
+              </IconOnMap>
+            ))}
+            {/* Bases */}
+            {active.has('bases') && bases.map((b, i) => (
+              <IconOnMap key={i} fx={b.fx} fy={b.fy} size={18}>
+                <div className="grid place-items-center rounded-sm border border-white/90 text-white shadow-[0_0_5px_rgba(0,0,0,0.9)]" style={{ width: 18, height: 18, background: 'var(--rar-legendary)' }} title={`Base #${i + 1}`}>
+                  <Home size={11} />
+                </div>
+              </IconOnMap>
+            ))}
+            {/* Apparition d'un Pal : points rouges (au-dessus de tout) */}
+            {spawnPts.map(([fx, fy], i) => (
+              <div key={`sp${i}`} className="pointer-events-none absolute z-20" style={{ left: `${fx * 100}%`, top: `${fy * 100}%`, transform: 'translate(-50%, -50%)' }}>
+                <div style={{ transform: 'scale(calc(1 / var(--pz-scale, 1)))' }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#ff3b3b', border: '1px solid rgba(255,255,255,0.85)', boxShadow: '0 0 3px rgba(255,0,0,0.9)' }} />
+                </div>
+              </div>
+            ))}
           </div>
         </PanZoom>
 
         <p className="mt-2 text-[11px] text-[var(--color-faint)]">
-          Molette : zoom · Glisser : déplacer.{' '}
-          {known ? (
-            'Voyage rapide coloré selon ta partie ; les bases affichées sont celles du monde.'
-          ) : (
-            <>Importe ta partie (onglet « Ma partie ») pour voir tes points débloqués et tes bases.</>
-          )}{' '}
-          Données de carte : PalworldSaveTools (MIT).
+          Molette : zoom · Glisser : déplacer · Survole un marqueur pour son nom.{' '}
+          {known ? 'Voyage rapide coloré selon ta partie.' : 'Importe ta partie (« Ma partie ») pour tes points débloqués et tes bases.'}{' '}
+          Données : PalworldSaveTools (MIT) · POI &amp; emplacements : paldb.cc.
         </p>
       </div>
     </>

@@ -11,9 +11,66 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createContext, runInContext } from 'node:vm'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const RAW = 'https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main'
+
+// ------------------------------------------------------------------ //
+//  POI depuis paldb.cc (map_data_fr.js) — voir crédits README        //
+//  Catégories utilisateur -> types paldb + icône officielle.         //
+// ------------------------------------------------------------------ //
+const PALDB_MAP_DATA = 'https://paldb.cc/js/map_data_fr.js'
+
+const POI_CATEGORIES = [
+  { id: 'effigy', label: 'Effigies', icon: 'lifmunk_effigy.png', types: ['Lifmunk Effigy'] },
+  { id: 'chest', label: 'Coffres', icon: 'chest-loc.png', types: ['Treasure', 'Treasure Element', 'Treasure Map', 'Oilrig Treasure', 'Oilrig Treasure Goal'] },
+  { id: 'egg', label: 'Œufs', icon: 'egg-loc.png', types: ['Grass Egg', 'Volcano Egg', 'Frozen Egg', 'Desert Egg', 'Feybreak Egg', 'Sakura Egg'] },
+  { id: 'dungeon', label: 'Donjons', icon: 'T_icon_compass_dungeon.png', types: ['Dungeon', 'Cave Entrance'] },
+  { id: 'alpha', label: 'Pals Alpha', icon: 'T_prt_reticle_pal_icon.png', types: ['Alpha Pal'] },
+  { id: 'npc', label: 'PNJ', icon: 'npc-loc.png', types: ['NPC', 'City', 'Arrogant Pal Critic'] },
+  { id: 'merchant', label: 'Marchands', icon: 'merch-loc.png', types: ['Wandering Merchant', 'Black Marketeer'] },
+  { id: 'fruit', label: 'Arbres à fruits', icon: 'fruit-loc.png', types: ['Fruit Tree'] },
+  { id: 'note', label: 'Journaux', icon: 'note-loc.png', types: ['Journals'] },
+  { id: 'fishing', label: 'Pêche', icon: null, types: ['Fishing Spot'] },
+  { id: 'ore', label: 'Minerais', icon: null, types: ['Ore', 'Coal', 'Sulfur', 'Pure Quartz', 'Hexolite Quartz', 'Chromite', 'Crude Oil', 'Nightstar Sand', 'Coal Cluster', 'Ore Cluster', 'Pure Quartz Cluster', 'Sulfur Cluster'] },
+]
+
+/** Récupère les POI de paldb.cc, applique leur transformation exacte ipos -> fraction d'image. */
+async function fetchPaldbPoi() {
+  const r = await fetch(PALDB_MAP_DATA, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://paldb.cc/fr/Palpagos_Islands' } })
+  if (!r.ok) throw new Error(`paldb map_data -> ${r.status}`)
+  const ctx = {}
+  createContext(ctx)
+  runInContext(await r.text(), ctx)
+  const all = [...(ctx.extrasIngame || []), ...(ctx.extras || []), ...(ctx.fixedDungeon || [])].filter((m) => m && m.ipos)
+  // Transformation exacte de paldb (config + perPixel=459)
+  const c = ctx.config
+  const perPixel = 459
+  const tXp = (c.landScapeRealPositionMax.X - c.landScapeRealPositionMin.X) / perPixel
+  const tYp = (c.landScapeRealPositionMax.Y - c.landScapeRealPositionMin.Y) / perPixel
+  const igXs = 1000 + (-582888 - c.landScapeRealPositionMin.X) / perPixel
+  const igYs = 1000 + (-301000 - c.landScapeRealPositionMin.Y) / perPixel
+  const toFrac = (X, Y) => ({ fx: (X + igYs) / tYp, fy: 1 - (Y + igXs) / tXp })
+
+  const typeToCat = {}
+  for (const cat of POI_CATEGORIES) for (const t of cat.types) typeToCat[t] = cat.id
+
+  const poi = {}
+  for (const cat of POI_CATEGORIES) poi[cat.id] = []
+  for (const m of all) {
+    const cat = typeToCat[m.type]
+    if (!cat) continue
+    const { fx, fy } = toFrac(m.ipos.X, m.ipos.Y)
+    if (fx < 0 || fx > 1 || fy < 0 || fy > 1) continue
+    const e = { fx: +fx.toFixed(4), fy: +fy.toFixed(4) }
+    if (m.item) e.n = m.item
+    if (typeof m.lv === 'number') e.lv = m.lv
+    if (m.onlyTime) e.time = m.onlyTime // day / night
+    poi[cat].push(e)
+  }
+  return { poi, meta: POI_CATEGORIES.map((c) => ({ id: c.id, label: c.label, icon: c.icon ? `img/map-icons/${c.icon}` : null })) }
+}
 
 const TRANSL_X = 375247
 const TRANSL_Y = -18
@@ -76,21 +133,27 @@ async function main() {
   // --- Mapping des boss (flag -> zone) ---
   const bossMap = await getJson('resources/game_data/boss_mapping.json')
 
+  // --- POI depuis paldb.cc ---
+  const { poi, meta } = await fetchPaldbPoi()
+
   // --- Fond de carte ---
   const imgBytes = await download('resources/assets/maps/T_WorldMap.webp', join(ROOT, 'public/img/worldmap.webp'))
 
   const out = {
-    _source: 'PalworldSaveTools (MIT, deafdudecomputers) + palworld-coord',
+    _source: 'PalworldSaveTools (MIT, deafdudecomputers) + palworld-coord ; POI: paldb.cc',
     image: 'img/worldmap.webp',
     fastTravel,
     towers,
     bossFlagMap: bossMap.boss_defeat_flag_map ?? {},
+    poiMeta: meta,
+    poi,
   }
   writeFileSync(join(ROOT, 'src/data/map.json'), JSON.stringify(out, null, 0))
 
   console.log(`Voyage rapide : ${fastTravel.length} sur l'île (${ftOff} hors île / DLC ignorés)`)
   console.log(`Tours de boss : ${towers.length}`)
   console.log(`Boss flags : ${Object.keys(out.bossFlagMap).length}`)
+  console.log(`POI paldb : ${meta.map((m) => `${m.id}=${poi[m.id].length}`).join(', ')}`)
   console.log(`Image : ${(imgBytes / 1024).toFixed(0)} Ko -> public/img/worldmap.webp`)
   console.log('Écrit : src/data/map.json')
   // échantillon pour vérif visuelle

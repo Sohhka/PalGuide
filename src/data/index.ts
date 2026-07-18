@@ -40,6 +40,16 @@ export interface BreedingGraph {
   parentToChildren: Map<number, Set<number>>
 }
 
+// ---- Apparitions de Pals (spawns) : chargé à la demande (~1 Mo) ----
+export type SpawnData = Record<string, [number, number][]>
+let spawnPromise: Promise<SpawnData> | null = null
+export function loadSpawns(): Promise<SpawnData> {
+  if (!spawnPromise) {
+    spawnPromise = import('./spawns.json').then((mod) => mod.default as unknown as SpawnData)
+  }
+  return spawnPromise
+}
+
 let breedingPromise: Promise<BreedingGraph> | null = null
 
 export function loadBreedingGraph(): Promise<BreedingGraph> {
