@@ -9,7 +9,7 @@ import { skillCategories } from './partnerSkills'
 import { starSkillFactor, starStatFactor } from './stars'
 import { pals, palByKey, workLabels } from '../data'
 
-export type IntentId = 'dps' | 'tank' | 'base' | 'mount' | 'capture' | 'boss'
+export type IntentId = 'dpsPlayer' | 'dpsPal' | 'tank' | 'base' | 'mount' | 'capture' | 'boss'
 export type StatKey = 'hp' | 'meleeAttack' | 'shotAttack' | 'defense' | 'stamina' | 'food'
 export type SpeedKey = 'walk' | 'run' | 'rideSprint' | 'transport'
 export type ElementKey =
@@ -34,13 +34,27 @@ export interface IntentDef {
 // ------------------------------------------------------------------ //
 export const INTENTS: IntentDef[] = [
   {
-    id: 'dps', label: 'DPS / Dégâts joueur',
-    motsClesFR: ['degats', 'degat', 'dps', 'dommage', 'dommages', 'dmg', 'damage', 'attaque', 'attaquer',
-      'attack', 'atk', 'offensif', 'offensive', 'offense', 'agressif', 'agressive', 'faire mal', 'taper',
-      'cogner', 'frapper', 'frappe', 'burst', 'nuke', 'one shot', 'oneshot', 'tuer', 'kill', 'carry',
-      'puissance', 'puissant', 'force', 'glass cannon', 'combat', 'combattant', 'combattre', 'fight',
-      'rush', 'demolir', 'detruire', 'sniper', 'tireur', 'shot', 'arme'],
-    categories: { weapon: 1.0, atk: 1.0, element: 0.7, active: 0.8, special: 0.4 },
+    id: 'dpsPlayer', label: 'Dégâts du joueur',
+    // dégâts que TON personnage inflige (partner skills « arme du joueur » / « attaque de monture »)
+    motsClesFR: ['de mon personnage', 'mon personnage', 'personnage', 'perso', 'mon perso', 'du joueur',
+      'le joueur', 'degats du joueur', 'degats joueur', 'degats de mon personnage', 'mes armes', 'mon arme',
+      'arme', 'armes', 'flingue', 'fusil', 'pistolet', 'au flingue', 'au fusil', 'gun', 'mes degats a moi',
+      'que je tape', 'que je fasse mal'],
+    categories: { weapon: 1.0, atk: 1.0, active: 0.3 },
+    statWeights: {},
+    elementFilterable: true, workFilterable: false,
+  },
+  {
+    id: 'dpsPal', label: 'Dégâts des Pals',
+    // dégâts que TES PALS infligent (boost d'élément, puissance de compétence active, attaque du Pal)
+    motsClesFR: ['degats des pals', 'degats de mes pals', 'degat des pals', 'des pals', 'de mes pals',
+      'mes pals', 'que mes pals', 'pals qui tapent', 'mes creatures', 'mes monstres', 'mes compagnons',
+      'degats', 'degat', 'dps', 'dommage', 'dommages', 'dmg', 'damage', 'attaque', 'attaquer', 'attack',
+      'atk', 'offensif', 'offensive', 'offense', 'agressif', 'agressive', 'faire mal', 'taper', 'cogner',
+      'frapper', 'frappe', 'burst', 'nuke', 'one shot', 'oneshot', 'tuer', 'kill', 'carry', 'puissance',
+      'puissant', 'force', 'glass cannon', 'combat', 'combattant', 'combattre', 'fight', 'rush', 'demolir',
+      'detruire', 'ravager', 'sniper', 'tireur'],
+    categories: { element: 1.0, active: 1.0, special: 0.4, atk: 0.2 },
     statWeights: { meleeAttack: 1.0, shotAttack: 1.0 },
     elementFilterable: true, workFilterable: false,
   },
@@ -242,6 +256,13 @@ export function parsePrompt(text: string): ParsedPrompt {
     for (const re of it.re) if (re.test(t)) sc++
     if (sc > 0) scoreByIntent[it.id] = sc
   }
+  // Dégâts joueur vs dégâts des Pals : exclusifs. On garde le mieux détecté
+  // (égalité → dégâts des Pals, l'interprétation par défaut d'une « team dégâts »).
+  if (scoreByIntent.dpsPlayer && scoreByIntent.dpsPal) {
+    if (scoreByIntent.dpsPlayer > scoreByIntent.dpsPal) delete scoreByIntent.dpsPal
+    else delete scoreByIntent.dpsPlayer
+  }
+
   let intents = (Object.keys(scoreByIntent) as IntentId[])
     .sort((a, b) => scoreByIntent[b] - scoreByIntent[a])
     .slice(0, 2) // cap 2 intentions (P1-6)
@@ -258,9 +279,9 @@ export function parsePrompt(text: string): ParsedPrompt {
     if (res.some((re) => re.test(t))) { work = wk; break }
   }
 
-  // Un métier nommé ⇒ intention "base" ; un élément seul ⇒ "dps"
+  // Un métier nommé ⇒ intention "base" ; un élément seul ⇒ dégâts des Pals
   if (work && !intents.includes('base')) intents = (['base', ...intents] as IntentId[]).slice(0, 2)
-  if (element && intents.length === 0 && !negIntents.has('dps')) intents = ['dps']
+  if (element && intents.length === 0 && !negIntents.has('dpsPal')) intents = ['dpsPal']
 
   // Pals nommés explicitement (imposés) — retirés du texte pour la détection d'intentions ? Non :
   // un nom de Pal ne perturbe pas les mots-clés d'intention (noms propres distincts).
@@ -271,8 +292,8 @@ export function parsePrompt(text: string): ParsedPrompt {
 
   // Fallback si rien de reconnu (respecte la négation)
   if (intents.length === 0) {
-    const order: IntentId[] = ['dps', 'boss', 'tank', 'mount', 'base', 'capture']
-    intents = [order.find((id) => !negIntents.has(id)) ?? 'dps']
+    const order: IntentId[] = ['dpsPal', 'dpsPlayer', 'boss', 'tank', 'mount', 'base', 'capture']
+    intents = [order.find((id) => !negIntents.has(id)) ?? 'dpsPal']
   }
 
   const negCategories = new Set<string>()
