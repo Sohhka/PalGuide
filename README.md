@@ -56,11 +56,11 @@ Survole un Pal pour un aperçu rapide, clique pour ouvrir sa fiche complète :
 
 ### Équipement
 
-![Équipement — armes, armures, planeurs & accessoires par rareté](https://medias.lerobro.com/firefox_IlDBy0gXMk.png)
+![Équipement — armes, armures, planeurs & accessoires par rareté](https://medias.lerobro.com/screenshots/Sohhka/firefox_IlDBy0gXMk.png)
 
 ### Carte interactive
 
-![Carte interactive — calques, voyage rapide, apparitions de Pals](https://medias.lerobro.com/firefox_FkJzPFc7wC.png)
+![Carte interactive — calques, voyage rapide, apparitions de Pals](https://medias.lerobro.com/screenshots/Sohhka/firefox_FkJzPFc7wC.png)
 
 ## ⬇️ Installation (utilisateurs)
 
