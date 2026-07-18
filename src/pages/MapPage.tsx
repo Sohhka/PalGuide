@@ -29,10 +29,10 @@ const MAP = mapData as unknown as {
 
 const BASE_W = 1400
 
-// coords save -> fraction d'image (île principale = plage in-game [-1000, 1000])
-const TRANSL_X = 123888
-const TRANSL_Y = 158000
-const SCALE = 459
+// coords save -> fraction d'image (carte monde 1.0+, constantes « new » de palworld-coord)
+const TRANSL_X = 375247
+const TRANSL_Y = -18
+const SCALE = 725
 function savToFraction(x: number, y: number) {
   const mx = (y - TRANSL_Y) / SCALE
   const my = (x + TRANSL_X) / SCALE

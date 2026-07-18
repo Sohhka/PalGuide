@@ -3,9 +3,11 @@
 //   - fast_travel_points.json : { GUID: {x,y,z, id, localized_name} } en coords save
 //   - boss_mapping.json        : drapeaux de boss -> id de zone
 //   - T_WorldMap.webp          : fond de carte (île principale Palpagos)
-// Transformation (lib palworld-coord) : sav -> carte in-game, puis -> fraction d'image.
-//   mapX = round((y - 158000)/459) ; mapY = round((x + 123888)/459)   (X/Y inversés)
-//   fx = (mapX + 1000)/2000 ; fy = (1000 - mapY)/2000  (île principale = [-1000,1000])
+// Transformation (lib palworld-coord, constantes « new » de la carte 1.0+ complète) :
+//   mapX = round((y + 18)/725) ; mapY = round((x + 375247)/725)   (X/Y inversés)
+//   fx = (mapX + 1000)/2000 ; fy = (1000 - mapY)/2000  (carte monde = [-1000,1000])
+// (les anciennes constantes 123888/158000/459 étaient calibrées pour l'ancienne
+//  carte Palpagos seule et décalaient tout sur la carte monde actuelle.)
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -13,10 +15,10 @@ import { fileURLToPath } from 'node:url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const RAW = 'https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main'
 
-const TRANSL_X = 123888
-const TRANSL_Y = 158000
-const SCALE = 459
-const RANGE = 1000 // demi-plage de l'île principale
+const TRANSL_X = 375247
+const TRANSL_Y = -18
+const SCALE = 725
+const RANGE = 1000 // demi-plage de la carte monde
 
 /** coords save -> fraction d'image {fx, fy} + coords carte in-game {mx, my} */
 function savToFraction(x, y) {
