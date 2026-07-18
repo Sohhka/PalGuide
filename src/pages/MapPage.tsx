@@ -59,11 +59,25 @@ function LayerToggle({ active, onClick, color, icon, label }: { active: boolean;
 }
 
 function FTMarker({ f, unlocked, known }: { f: FastTravel; unlocked: boolean; known: boolean }) {
-  const color = !known ? 'var(--color-brand)' : unlocked ? 'var(--color-good)' : 'var(--color-faint)'
+  const locked = known && !unlocked // verrouillé (partie importée) -> icône grisée
   return (
     <div className="absolute" style={{ left: `${f.fx * 100}%`, top: `${f.fy * 100}%`, transform: 'translate(-50%, -50%)' }}>
-      <div className="group relative" style={{ transform: 'scale(calc(1 / var(--pz-scale, 1)))' }}>
-        <div className="rounded-full border border-white/90 shadow-[0_0_4px_rgba(0,0,0,0.85)]" style={{ width: 10, height: 10, background: color, opacity: known && !unlocked ? 0.6 : 1 }} />
+      <div className="group relative grid place-items-center" style={{ transform: 'scale(calc(1 / var(--pz-scale, 1)))' }}>
+        <img
+          src="img/map-icons/T_icon_compass_FTtower.png"
+          width={22}
+          height={22}
+          alt=""
+          loading="lazy"
+          className="block"
+          style={
+            locked
+              ? { filter: 'grayscale(1) brightness(0.7) drop-shadow(0 0 2px rgba(0,0,0,0.9))', opacity: 0.55 }
+              : known && unlocked
+                ? { filter: 'drop-shadow(0 0 3px var(--color-good)) drop-shadow(0 0 2px rgba(0,0,0,0.9))' }
+                : { filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.95))' }
+          }
+        />
         <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-ink)] shadow-lg group-hover:block">
           {f.name}{known && <span className={unlocked ? 'text-[var(--color-good)]' : 'text-[var(--color-faint)]'}> · {unlocked ? 'débloqué' : 'verrouillé'}</span>}
         </div>
@@ -200,7 +214,7 @@ export function MapPage() {
 
         <p className="mt-2 text-[11px] text-[var(--color-faint)]">
           Molette : zoom · Glisser : déplacer · Survole un marqueur pour son nom.{' '}
-          {known ? 'Voyage rapide coloré selon ta partie.' : 'Importe ta partie (« Ma partie ») pour tes points débloqués et tes bases.'}{' '}
+          {known ? 'Voyage rapide : icône pleine = débloqué, grisée = verrouillé.' : 'Importe ta partie (« Ma partie ») pour tes points débloqués et tes bases.'}{' '}
           Données : PalworldSaveTools (MIT) · POI &amp; emplacements : paldb.cc.
         </p>
       </div>

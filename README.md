@@ -17,7 +17,7 @@ Paldex complet · Calculateur de reproduction (chemins complets) · Taux de capt
 - 📖 **Paldex** — les 299 Pals de Palworld 1.0. Survole un Pal pour un aperçu rapide, clique pour ouvrir sa **fiche complète** (stats, éléments, aptitudes de travail, partner skill, passifs, compétences actives, drops, reproduction & capture).
 - 🥚 **Breeding** — calcul direct (Parent 1 + Parent 2 = enfant), **toutes les recettes** d'un Pal, **path finder** et **arbre de reproduction** en pyramide avec **génération automatique du chemin** depuis tes Pals et **planificateur de talents** : choisis les passifs visés et repère, parmi tes Pals importés, ceux qui les portent (leurs talents s'affichent dans l'arbre).
 - 🎯 **Capture** — estimation du taux de capture par sphère selon le niveau, les PV, la puissance de capture et le bonus dans le dos.
-- 🎒 **Objets** — recherche un objet pour voir **tous les Pals qui le lâchent**, avec la quantité et le taux de drop.
+- 🎒 **Objets** — recherche un objet pour voir **tous les Pals qui le lâchent**, avec la quantité et le taux de drop. Inclut les **plans (schematics) d'armes et d'armures** — de rareté rare à **légendaire** — avec le **boss/Pal qui les lâche** et s'ils sont aussi **trouvables en coffre**.
 - ⚔️ **Équipement** — base des **armes, armures, planeurs et accessoires** avec leurs **stats par rareté** (Commun → Légendaire) et leurs **matériaux de fabrication**.
 - 🎮 **Ma partie** — importe la **sauvegarde de ta partie** Palworld pour récupérer tes Pals (équipe, boîte, base) avec leurs **niveaux, IVs, passifs et étoiles de condensation**. Alimente aussi le path finder et le générateur d'équipe. *(Import : app de bureau, nécessite Python — voir plus bas.)*
 - 👥 **Team Builder** — équipe de 5, partner skills, **détection des cumuls** (stacking), synergies, couverture élémentaire et aptitudes de travail cumulées. **Générateur d'équipe par description** : écris ce que tu veux (« team endgame qui augmente mes dégâts », « des mineurs pour ma base », « team feu avec Jetragon »…) et PalGuide compose une équipe optimisée — objectif détecté, cumuls respectés, **étoiles de condensation** prises en compte, et **Pals imposés** si tu en nommes. Sauvegarde plusieurs **builds** (presets) que tu peux recharger et modifier.
@@ -48,11 +48,19 @@ Survole un Pal pour un aperçu rapide, clique pour ouvrir sa fiche complète :
 
 | Taux de capture | Composition d'équipe | Notes & projets |
 |:---:|:---:|:---:|
-| ![Calculateur de taux de capture](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_lcL6rPAwFU.png) | ![Composition d'équipe](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_lwv4t0f9wW.png) | ![Notes & projets](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_hMoLB0Wrf6.png) |
+| ![Calculateur de taux de capture](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_lcL6rPAwFU.png) | ![Composition d'équipe](https://medias.lerobro.com/firefox_GLFq1F1dPM.png) | ![Notes & projets](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_hMoLB0Wrf6.png) |
 
 ### Recherche d'objets
 
 ![Recherche d'objets](https://medias.lerobro.com/screenshots/Sohhka/firefox_jYLT276ZxV.png)
+
+### Équipement
+
+![Équipement — armes, armures, planeurs & accessoires par rareté](https://medias.lerobro.com/firefox_IlDBy0gXMk.png)
+
+### Carte interactive
+
+![Carte interactive — calques, voyage rapide, apparitions de Pals](https://medias.lerobro.com/firefox_FkJzPFc7wC.png)
 
 ## ⬇️ Installation (utilisateurs)
 
@@ -127,7 +135,7 @@ Electron · Vite · React · TypeScript · Tailwind CSS v4 · Zustand · React R
 ## 🤝 Crédits
 
 - Données : **PalCalc** (MIT) et **paldb.cc**. Merci à leurs auteurs.
-- Données de la **carte interactive** : fond de carte, voyage rapide et tours via **[PalworldSaveTools](https://github.com/deafdudecomputers/PalworldSaveTools)** (MIT, deafdudecomputers) et **palworld-coord** ; emplacements (coffres, œufs, effigies, donjons, PNJ…), **lieux d'apparition des Pals** et **base d'équipement** (armes/armures/planeurs/accessoires) via **[paldb.cc](https://paldb.cc)**. Merci à leurs auteurs.
+- Données de la **carte interactive** : fond de carte, voyage rapide et tours via **[PalworldSaveTools](https://github.com/deafdudecomputers/PalworldSaveTools)** (MIT, deafdudecomputers) et **palworld-coord** ; emplacements (coffres, œufs, effigies, donjons, PNJ…), **lieux d'apparition des Pals**, **base d'équipement** (armes/armures/planeurs/accessoires) et **plans lâchés par les boss** via **[paldb.cc](https://paldb.cc)**. Merci à leurs auteurs.
 - Application développée avec l'aide de **Claude** (Anthropic).
 - Projet **non affilié** à Pocketpair. « Palworld » et les noms/images de Pals appartiennent à leurs propriétaires respectifs. Ce projet est fourni à des fins d'information pour la communauté.
 

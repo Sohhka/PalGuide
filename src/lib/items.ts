@@ -1,4 +1,4 @@
-import { pals } from '../data'
+import { pals, palByKey, schematics } from '../data'
 import type { Pal } from './types'
 
 export interface ItemSource {
@@ -9,6 +9,19 @@ export interface ItemSource {
   levelGate: number | null
 }
 
+/** Droppeur d'un plan : Pal de base résolu (pour l'icône) + nom d'affichage du boss. */
+export interface SchematicDropper {
+  pal: Pal | null
+  bossName: string
+}
+
+/** Infos spécifiques aux « plans » (schematics) : rareté, coffre, boss droppeurs. */
+export interface SchematicInfo {
+  rarity: number | null
+  treasureBox: boolean
+  droppers: SchematicDropper[]
+}
+
 export interface ItemEntry {
   key: string
   name: string
@@ -16,6 +29,8 @@ export interface ItemEntry {
   sources: ItemSource[]
   /** meilleur taux de drop de base (hors paliers de boss) */
   bestRate: number
+  /** présent si l'objet est un plan de fabrication lâché par un boss/Pal */
+  schematic?: SchematicInfo
 }
 
 function parseRate(rate: string | null): number {
@@ -60,6 +75,23 @@ export function getItemIndex(): ItemEntry[] {
       const gb = b.levelGate ?? -1
       if (ga !== gb) return ga - gb // base (-1) en premier, puis Niv.70, Niv.80…
       return b.rateNum - a.rateNum
+    })
+  }
+
+  // Plans (schematics) : objets à part entière, « lâchés par » des boss/Pals.
+  for (const s of schematics) {
+    if (byKey.has(s.slug)) continue
+    byKey.set(s.slug, {
+      key: s.slug,
+      name: s.name,
+      iconUrl: s.icon,
+      sources: [],
+      bestRate: 0,
+      schematic: {
+        rarity: s.rarity,
+        treasureBox: s.treasureBox,
+        droppers: s.droppers.map((d) => ({ pal: (d.palKey && palByKey.get(d.palKey)) || null, bossName: d.name })),
+      },
     })
   }
 

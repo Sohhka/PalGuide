@@ -1,11 +1,17 @@
 import { useMemo, useState } from 'react'
-import { Search, Package, ArrowRight } from 'lucide-react'
+import { Search, Package, ArrowRight, Gift, ScrollText } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PalIcon } from '../components/PalIcon'
 import { PalTypeBadges } from '../components/badges'
 import { PalDetailModal } from '../components/PalDetailModal'
 import { getItemIndex, itemMatches, type ItemEntry } from '../lib/items'
 import type { Pal } from '../lib/types'
+
+const RARITY_LABEL = ['Commun', 'Inhabituel', 'Rare', 'Épique', 'Légendaire']
+const RARITY_COLOR = ['#9ca3af', '#4ade80', '#60a5fa', '#c084fc', '#fbbf24']
+
+/** Nombre de sources d'un objet (Pals qui le lâchent, ou boss droppeurs pour un plan). */
+const sourceCount = (it: ItemEntry) => (it.schematic ? it.schematic.droppers.length : it.sources.length)
 
 export function ItemsPage() {
   const items = useMemo(() => getItemIndex(), [])
@@ -24,7 +30,7 @@ export function ItemsPage() {
       <PageHeader
         eyebrow="Objets"
         title="Où trouver un objet"
-        subtitle="Cherche un objet pour voir tous les Pals qui le lâchent, avec la quantité et le taux de drop."
+        subtitle="Cherche un objet pour voir tous les Pals qui le lâchent, avec la quantité et le taux de drop. Inclut les plans d'armes/armures lâchés par les boss."
       />
 
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
@@ -57,8 +63,16 @@ export function ItemsPage() {
                   <span className="grid h-7 w-7 shrink-0 place-items-center text-[var(--color-faint)]"><Package size={16} /></span>
                 )}
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold">{it.name}</span>
+                {it.schematic && (
+                  <span
+                    className="shrink-0 chip text-[10px] font-bold"
+                    style={{ color: RARITY_COLOR[it.schematic.rarity ?? 0], borderColor: RARITY_COLOR[it.schematic.rarity ?? 0] + '55' }}
+                  >
+                    Plan
+                  </span>
+                )}
                 <span className="shrink-0 chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-faint)]">
-                  {it.sources.length}
+                  {sourceCount(it)}
                 </span>
               </button>
             ))}
@@ -86,6 +100,8 @@ export function ItemsPage() {
 }
 
 function ItemDetail({ entry, onPal }: { entry: ItemEntry; onPal: (pal: Pal) => void }) {
+  if (entry.schematic) return <SchematicDetail entry={entry} onPal={onPal} />
+
   const base = entry.sources.filter((s) => s.levelGate == null)
   const tiered = entry.sources.filter((s) => s.levelGate != null)
 
@@ -111,6 +127,70 @@ function ItemDetail({ entry, onPal }: { entry: ItemEntry; onPal: (pal: Pal) => v
       {tiered.length > 0 && (
         <SourceTable title="Drops de boss / haut niveau" sources={tiered} onPal={onPal} showGate />
       )}
+    </div>
+  )
+}
+
+function SchematicDetail({ entry, onPal }: { entry: ItemEntry; onPal: (pal: Pal) => void }) {
+  const sch = entry.schematic!
+  const rarity = sch.rarity ?? 0
+  const color = RARITY_COLOR[rarity]
+
+  return (
+    <div className="space-y-4">
+      {/* En-tête plan */}
+      <div className="card flex items-center gap-4 p-5" style={{ borderColor: color + '55' }}>
+        {entry.iconUrl ? (
+          <img src={entry.iconUrl} alt="" width={56} height={56} className="shrink-0" />
+        ) : (
+          <span className="grid h-14 w-14 shrink-0 place-items-center text-[var(--color-faint)]"><ScrollText size={28} /></span>
+        )}
+        <div className="min-w-0">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <span className="chip text-[11px] font-bold" style={{ color, borderColor: color + '55' }}>
+              Plan · {RARITY_LABEL[rarity]}
+            </span>
+            {sch.treasureBox && (
+              <span className="chip flex items-center gap-1 text-[11px] text-[var(--color-muted)]">
+                <Gift size={12} /> Aussi en coffre
+              </span>
+            )}
+          </div>
+          <h2 className="truncate text-2xl font-extrabold tracking-tight" style={{ color }}>{entry.name}</h2>
+          <div className="text-sm text-[var(--color-muted)]">
+            Lâché par <b className="text-[var(--color-ink)]">{sch.droppers.length}</b> boss / Pal{sch.droppers.length > 1 ? 's' : ''}
+          </div>
+        </div>
+      </div>
+
+      {/* Boss / Pals qui lâchent le plan */}
+      <section className="card p-4">
+        <h3 className="hud-h mb-3 text-sm">Lâché par</h3>
+        <div className="space-y-1.5">
+          {sch.droppers.map((d, i) => (
+            <div key={i} className="flex items-center gap-3 border-t border-[var(--color-border-soft)] py-1.5 first:border-t-0">
+              {d.pal ? (
+                <button onClick={() => onPal(d.pal!)} className="group flex flex-1 items-center gap-2.5 text-left" title="Voir la fiche">
+                  <PalIcon pal={d.pal} size={34} ring />
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 text-sm font-semibold group-hover:text-[var(--color-brand)]">
+                      {d.bossName}
+                      <ArrowRight size={12} className="opacity-0 transition-opacity group-hover:opacity-100" />
+                    </span>
+                    <span className="block"><PalTypeBadges pal={d.pal} size="sm" /></span>
+                  </span>
+                </button>
+              ) : (
+                <span className="flex flex-1 items-center gap-2.5">
+                  <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-[var(--color-surface-2)] text-[var(--color-faint)]"><Package size={16} /></span>
+                  <span className="text-sm font-semibold">{d.bossName}</span>
+                </span>
+              )}
+              <span className="shrink-0 chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-faint)]">Boss</span>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

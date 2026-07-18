@@ -4,8 +4,28 @@ import elementsData from './elements.json'
 import passivesData from './passives.json'
 import workData from './work.json'
 import metaData from './meta.json'
+import schematicsData from './schematics.json'
 
 export const pals = palsData as unknown as Pal[]
+
+// ---- Plans (schematics) d'armes/armures lâchés par des boss/Pals ----
+export interface SchematicDropper {
+  /** nom d'affichage du droppeur (souvent un boss, ex. « Tyran du Purgatoire Blazamut ») */
+  name: string
+  /** clé du Pal de base correspondant (pour l'icône/la fiche), null pour un raid boss sans Pal de base */
+  palKey: string | null
+}
+export interface Schematic {
+  slug: string
+  name: string
+  icon: string | null
+  /** rareté 0-4 (Commun→Légendaire), null si inconnue */
+  rarity: number | null
+  droppers: SchematicDropper[]
+  /** aussi trouvable dans un coffre au trésor */
+  treasureBox: boolean
+}
+export const schematics = schematicsData as unknown as Schematic[]
 export const elements = elementsData as ElementInfo[]
 export const passives = passivesData as Record<string, PassiveInfo>
 export const meta = metaData as Meta
