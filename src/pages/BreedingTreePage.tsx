@@ -15,7 +15,7 @@ import type { BreedingGraph } from '../data'
 import type { Pal, ImportedPal } from '../lib/types'
 import { combosForChild, computeShortestSteps, buildOptimalTree, treeToSteps } from '../lib/breeding'
 import { useStore } from '../store/useStore'
-import { palsOfPlayer, importByKey, ownedKeysFromImport } from '../lib/savedata'
+import { palsOfPlayer, importByKey, ownedKeysFromImport, LOCATION_LABEL } from '../lib/savedata'
 
 export function BreedingTreePage() {
   const graph = useBreedingGraph()
@@ -43,6 +43,32 @@ export function BreedingTreePage() {
     [desired, myPals],
   )
   const covered = donors.filter((d) => d.instances.length > 0).length
+
+  // Briques de lignée : tes Pals porteurs d'au moins un talent voulu, regroupés
+  // par (espèce + set de talents identique) et triés du plus « propre » au plus « sale ».
+  const [showAllDonors, setShowAllDonors] = useState(false)
+  const donorBricks = useMemo(() => {
+    if (!importedSave || desired.length === 0) return []
+    const map = new Map<string, { pal: Pal; sample: ImportedPal; good: string[]; junk: string[]; count: number }>()
+    for (const p of myPals) {
+      const good = p.passives.filter((x) => desiredSet.has(x))
+      if (good.length === 0) continue
+      const pal = p.palKey ? palByKey.get(p.palKey) : null
+      if (!pal) continue
+      const junk = p.passives.filter((x) => !desiredSet.has(x))
+      const key = `${p.palKey}|${[...p.passives].sort().join(',')}`
+      const ex = map.get(key)
+      if (ex) ex.count++
+      else map.set(key, { pal, sample: p, good, junk, count: 1 })
+    }
+    return [...map.values()].sort(
+      (a, b) =>
+        (a.junk.length === 0 ? 0 : 1) - (b.junk.length === 0 ? 0 : 1) || // propres d'abord
+        b.good.length - a.good.length || // puis le plus de talents voulus
+        a.junk.length - b.junk.length || // puis le moins de déchets
+        b.count - a.count,
+    )
+  }, [importedSave, myPals, desired, desiredSet])
 
   // ---- Chemin automatique ----
   const owned = useStore((s) => s.owned)
@@ -129,29 +155,103 @@ export function BreedingTreePage() {
               lesquels de tes Pals possèdent ces talents.
             </p>
           ) : (
-            <div className="space-y-2">
-              {donors.map((d) => (
-                <div key={d.passive} className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border-soft)] pb-2 last:border-0">
-                  <PassiveChip passiveKey={d.passive} />
-                  {d.instances.length === 0 ? (
-                    <span className="text-xs text-[var(--color-faint)]">Aucun de tes Pals ne l'a — à capturer / faire apparaître.</span>
-                  ) : (
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      {[...new Map(d.instances.map((i) => [i.palKey, i])).values()].slice(0, 8).map((inst, i) => {
-                        const p = inst.palKey ? palByKey.get(inst.palKey) : null
-                        if (!p) return null
-                        const n = d.instances.filter((x) => x.palKey === inst.palKey).length
-                        return (
-                          <span key={i} className="inline-flex items-center gap-1 text-xs text-[var(--color-muted)]">
-                            <PalIcon pal={p} size={18} /> {p.name}
-                            {n > 1 && <span className="text-[var(--color-faint)]">×{n}</span>}
-                          </span>
-                        )
-                      })}
+            <div className="space-y-4">
+              {/* Couverture : combien de tes Pals portent chaque talent voulu */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {donors.map((d) => {
+                  const info = passives[d.passive]
+                  const has = d.instances.length > 0
+                  const c = has ? passiveRankColor(info?.rank ?? 1) : 'var(--color-bad)'
+                  return (
+                    <span
+                      key={d.passive}
+                      className="chip"
+                      title={has ? `${d.instances.length} de tes Pals portent ce talent` : "Aucun de tes Pals ne l'a — à capturer / faire apparaître"}
+                      style={{
+                        color: c,
+                        background: `color-mix(in srgb, ${c} 12%, transparent)`,
+                        border: `1px solid color-mix(in srgb, ${c} 45%, transparent)`,
+                      }}
+                    >
+                      {info?.name ?? d.passive}
+                      <span className="opacity-70">· {has ? `×${d.instances.length}` : '0'}</span>
                     </span>
+                  )
+                })}
+              </div>
+
+              {/* Meilleurs donneurs = briques pour démarrer une lignée propre */}
+              {donorBricks.length === 0 ? (
+                <p className="text-sm text-[var(--color-muted)]">Aucun de tes Pals ne porte l'un de ces talents pour l'instant — à capturer / faire apparaître.</p>
+              ) : (
+                <div>
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-faint)]">
+                    Meilleurs donneurs pour démarrer une lignée
+                    <span className="chip bg-[var(--color-surface-2)] text-[10px] normal-case text-[var(--color-faint)]">les plus « propres » d'abord</span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(showAllDonors ? donorBricks : donorBricks.slice(0, 6)).map((b, idx) => {
+                      const clean = b.junk.length === 0
+                      const perfect = clean && b.good.length === desired.length
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex flex-col gap-1.5 border p-2 ${
+                            clean
+                              ? 'border-[color-mix(in_srgb,var(--color-good)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-good)_8%,transparent)]'
+                              : 'border-[var(--color-border)] bg-[var(--color-surface-2)]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <PalIcon pal={b.pal} size={26} ring />
+                            <span className="text-sm font-semibold">{b.pal.name}</span>
+                            {b.sample.gender && (
+                              <span style={{ color: b.sample.gender === 'male' ? '#5aa9e6' : '#e67ab0' }}>
+                                {b.sample.gender === 'male' ? '♂' : '♀'}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-[var(--color-faint)]">Nv {b.sample.level} · {LOCATION_LABEL[b.sample.location]}</span>
+                            {b.count > 1 && <span className="text-[10px] text-[var(--color-faint)]">×{b.count}</span>}
+                            <span className="ml-auto">
+                              {perfect ? (
+                                <span className="chip" style={{ color: '#ffb638', background: 'color-mix(in srgb, #ffb638 16%, transparent)' }}>★ Parfait</span>
+                              ) : clean ? (
+                                <span className="chip" style={{ color: 'var(--color-good)', background: 'color-mix(in srgb, var(--color-good) 16%, transparent)' }}>✓ Propre</span>
+                              ) : (
+                                <span className="chip" style={{ color: 'var(--color-warn)', background: 'color-mix(in srgb, var(--color-warn) 14%, transparent)' }}>
+                                  {b.junk.length} déchet{b.junk.length > 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {b.good.map((pk) => (
+                              <PassiveChip key={pk} passiveKey={pk} />
+                            ))}
+                            {b.junk.map((pk) => (
+                              <span
+                                key={pk}
+                                className="chip bg-[var(--color-bg-soft)] text-[10px] text-[var(--color-faint)] line-through"
+                                title="Talent indésirable (déchet) — à éliminer par élevage"
+                              >
+                                {passives[pk]?.name ?? pk}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {donorBricks.length > 6 && (
+                    <button className="btn mt-2 py-1 text-xs" onClick={() => setShowAllDonors((v) => !v)}>
+                      {showAllDonors ? 'Voir moins' : `Voir tous les donneurs (${donorBricks.length})`}
+                    </button>
                   )}
+                  <p className="mt-2 text-[11px] leading-relaxed text-[var(--color-faint)]">
+                    Un donneur <span className="text-[var(--color-good)]">propre</span> ne porte que des talents voulus : c'est la meilleure brique de départ. Combine deux parents propres pour concentrer les talents sur l'enfant (les <span className="line-through">déchets</span> diluent le tirage).
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>
