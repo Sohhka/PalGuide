@@ -14,7 +14,7 @@ export interface EffectCategory {
 const CATEGORIES: { test: RegExp; cat: EffectCategory }[] = [
   { test: /DamageUpWeapon|ShotAttack_PartnerSkill|Weapon/i, cat: { id: 'weapon', label: "Dégâts d'arme du joueur", stacks: true } },
   { test: /TrainerATK_UP|GiveElement_TrainerATK|AttackUp_.*Partner|TrainerAttack/i, cat: { id: 'atk', label: 'Attaque du joueur / monture', stacks: true } },
-  { test: /TrainerDEF_UP|Defense_.*Partner|DashDefence/i, cat: { id: 'def', label: 'Défense du joueur', stacks: true } },
+  { test: /TrainerDEF_UP|DefenseUp|Defense_.*Partner|DashDefence/i, cat: { id: 'def', label: 'Défense du joueur', stacks: true } },
   { test: /ElementBoost|AttackUp_(Fire|Water|Leaf|Electricity|Ice|Earth|Dark|Dragon|Normal)/i, cat: { id: 'element', label: "Boost de dégâts d'élément", stacks: true } },
   { test: /GiveA(Fire|Water|Leaf|Electricity|Ice|Earth|Dark|Dragon|Ice)_Ride|GiveElement/i, cat: { id: 'rideElement', label: "Élément ajouté en monture", stacks: false } },
   { test: /SwimSpeed/i, cat: { id: 'swim', label: 'Vitesse de nage', stacks: true } },

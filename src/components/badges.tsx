@@ -76,6 +76,22 @@ export function WorkBadge({ workKey, level }: { workKey: string; level: number }
   )
 }
 
+/** Rangée d'étoiles de condensation (0..4). */
+export function StarRow({ stars, size = 11 }: { stars: number; size?: number }) {
+  const n = Math.max(0, Math.min(4, Math.round(stars)))
+  return (
+    <span
+      className="inline-flex items-center leading-none text-[var(--color-brand)]"
+      style={{ fontSize: size }}
+      title={`${n} étoile${n > 1 ? 's' : ''} de condensation`}
+      aria-label={`${n} étoiles`}
+    >
+      {'★'.repeat(n)}
+      <span className="text-[var(--color-faint)] opacity-50">{'★'.repeat(4 - n)}</span>
+    </span>
+  )
+}
+
 export function PalTypeBadges({ pal, size = 'md' }: { pal: Pal; size?: 'sm' | 'md' }) {
   return (
     <span className="inline-flex flex-wrap gap-1">

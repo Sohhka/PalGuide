@@ -161,6 +161,11 @@ def extract(level_path, player_paths):
         nick = scalar(sp.get("NickName", {}))
         lvl_v = scalar(sp.get("Level", {}))
 
+        # Rang de condensation -> etoiles (0..4). Champ "Rank" (1..5), souvent absent si 0 etoile.
+        rank_v = scalar(sp.get("Rank", {}))
+        stars = (rank_v - 1) if isinstance(rank_v, int) else 0
+        stars = max(0, min(4, stars))
+
         pals.append({
             "instanceId": guid_str(e["key"].get("InstanceId")),
             "characterId": cid,
@@ -168,6 +173,7 @@ def extract(level_path, player_paths):
             "isBoss": normalize_species(cid) != cid,
             "gender": gender,
             "level": lvl_v if isinstance(lvl_v, int) else 1,
+            "stars": stars,
             "nickname": nick if isinstance(nick, str) else None,
             "iv": {
                 "hp": scalar(sp.get("Talent_HP", {})) if isinstance(scalar(sp.get("Talent_HP", {})), int) else 0,

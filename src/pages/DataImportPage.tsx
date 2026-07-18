@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PalIcon } from '../components/PalIcon'
-import { PalTypeBadges } from '../components/badges'
+import { PalTypeBadges, StarRow } from '../components/badges'
 import { PalDetailModal } from '../components/PalDetailModal'
 import { palByKey } from '../data'
 import { useStore } from '../store/useStore'
@@ -273,6 +273,7 @@ function ImportedPalRow({ pal, onOpen }: { pal: ImportedPal; onOpen: (p: Pal) =>
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-muted)]">Niv. {pal.level}</span>
+          {pal.stars > 0 && <StarRow stars={pal.stars} />}
           <PalTypeBadges pal={p} size="sm" />
           <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-brand)]">
             <LocIcon size={11} /> {LOCATION_LABEL[pal.location]}

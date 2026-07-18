@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Plus, X, Layers, AlertTriangle, Sparkles, Users, Trash2, Save, Bookmark, Pencil, Check } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
+import { TeamGeneratorPanel } from '../components/TeamGeneratorPanel'
 import { PalPickerModal } from '../components/PalPicker'
 import { PalIcon } from '../components/PalIcon'
 import { PalTypeBadges, WorkBadge, ElementBadge } from '../components/badges'
@@ -43,6 +44,9 @@ export function TeamBuilderPage() {
           ) : undefined
         }
       />
+
+      {/* Générateur d'équipe par description (prompt) */}
+      <TeamGeneratorPanel />
 
       {/* Presets d'équipe */}
       <div className="card mb-5 p-4">

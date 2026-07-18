@@ -18,6 +18,7 @@ interface RawImport {
     isBoss: boolean
     gender: 'male' | 'female' | null
     level: number
+    stars?: number
     nickname: string | null
     iv: { hp: number; melee: number; shot: number; defense: number }
     passives: string[]
@@ -31,6 +32,7 @@ export function resolveImport(raw: RawImport): ImportedSave {
   const pals: ImportedPal[] = raw.pals
     .map((p) => ({
       ...p,
+      stars: typeof p.stars === 'number' ? Math.max(0, Math.min(4, p.stars)) : 0,
       palKey: palByKey.has(p.species) ? p.species : null,
     }))
     // On ne garde que les vrais Pals (les humains/NPC capturés ont palKey = null)

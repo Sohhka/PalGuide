@@ -129,6 +129,7 @@ export interface ImportedPal {
   isBoss: boolean
   gender: 'male' | 'female' | null
   level: number
+  stars: number // rang de condensation 0..4 (0 si save importée avant cette version)
   nickname: string | null
   iv: { hp: number; melee: number; shot: number; defense: number }
   passives: string[]

@@ -28,6 +28,7 @@ interface AppState {
   team: (string | null)[]
   setTeamSlot: (index: number, key: string | null) => void
   clearTeam: () => void
+  setTeam: (keys: (string | null)[]) => void
 
   // Presets d'équipe (builds sauvegardés)
   teamPresets: TeamPreset[]
@@ -77,6 +78,12 @@ export const useStore = create<AppState>()(
           return { team }
         }),
       clearTeam: () => set({ team: [null, null, null, null, null] }),
+      setTeam: (keys) =>
+        set(() => {
+          const team: (string | null)[] = [null, null, null, null, null]
+          for (let i = 0; i < 5; i++) team[i] = keys[i] ?? null
+          return { team }
+        }),
 
       teamPresets: [],
       saveTeamPreset: (name) =>
