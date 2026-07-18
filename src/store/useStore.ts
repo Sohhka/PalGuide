@@ -11,6 +11,12 @@ export interface Note {
   updatedAt: number
 }
 
+export interface TeamPreset {
+  id: string
+  name: string
+  team: (string | null)[]
+}
+
 interface AppState {
   // Pals possédés (par clé interne) — utilisés par le path finder
   owned: string[]
@@ -22,6 +28,14 @@ interface AppState {
   team: (string | null)[]
   setTeamSlot: (index: number, key: string | null) => void
   clearTeam: () => void
+
+  // Presets d'équipe (builds sauvegardés)
+  teamPresets: TeamPreset[]
+  saveTeamPreset: (name: string) => void
+  loadTeamPreset: (id: string) => void
+  updateTeamPreset: (id: string) => void
+  renameTeamPreset: (id: string, name: string) => void
+  deleteTeamPreset: (id: string) => void
 
   // Sauvegarde importée (REMPLACÉE à chaque import — jamais fusionnée)
   importedSave: ImportedSave | null
@@ -63,6 +77,26 @@ export const useStore = create<AppState>()(
           return { team }
         }),
       clearTeam: () => set({ team: [null, null, null, null, null] }),
+
+      teamPresets: [],
+      saveTeamPreset: (name) =>
+        set((s) => ({
+          teamPresets: [...s.teamPresets, { id: uid(), name: name.trim() || 'Build', team: [...s.team] }],
+        })),
+      loadTeamPreset: (id) =>
+        set((s) => {
+          const p = s.teamPresets.find((x) => x.id === id)
+          return p ? { team: [...p.team] } : {}
+        }),
+      updateTeamPreset: (id) =>
+        set((s) => ({
+          teamPresets: s.teamPresets.map((p) => (p.id === id ? { ...p, team: [...s.team] } : p)),
+        })),
+      renameTeamPreset: (id, name) =>
+        set((s) => ({
+          teamPresets: s.teamPresets.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name } : p)),
+        })),
+      deleteTeamPreset: (id) => set((s) => ({ teamPresets: s.teamPresets.filter((p) => p.id !== id) })),
 
       importedSave: null,
       selectedPlayerUid: null,

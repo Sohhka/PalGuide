@@ -249,6 +249,75 @@ body {
   opacity: 1;
 }
 
+/* ---- Arbre de reproduction en pyramide (haut -> bas) ---- */
+.ftree,
+.ftree ul {
+  display: flex;
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ftree ul {
+  position: relative;
+  padding-top: 24px;
+}
+.ftree li {
+  position: relative;
+  padding: 24px 12px 0;
+  text-align: center; /* centre la carte du Pal au-dessus de son sous-arbre */
+}
+/* connecteurs horizontaux (haut de chaque enfant) */
+.ftree li::before,
+.ftree li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 24px;
+  border-top: 2px solid var(--color-border);
+}
+.ftree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 2px solid var(--color-border);
+}
+/* enfant unique : simple trait vertical */
+.ftree li:only-child::after,
+.ftree li:only-child::before {
+  display: none;
+}
+.ftree li:only-child {
+  padding-top: 24px;
+}
+/* bords : premier/dernier enfant */
+.ftree li:first-child::before,
+.ftree li:last-child::after {
+  border: 0 none;
+}
+.ftree li:last-child::before {
+  border-right: 2px solid var(--color-border);
+}
+/* tronc descendant du parent vers la barre des enfants */
+.ftree ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 24px;
+  border-left: 2px solid var(--color-border);
+}
+/* racine : pas de connecteur au-dessus */
+.ftree > li {
+  padding-top: 0;
+}
+.ftree > li::before,
+.ftree > li::after {
+  display: none;
+}
+
 .text-muted {
   color: var(--color-muted);
 }

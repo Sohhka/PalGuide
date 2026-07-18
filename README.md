@@ -15,11 +15,11 @@ Paldex complet · Calculateur de reproduction (chemins complets) · Taux de capt
 ## ✨ Fonctionnalités
 
 - 📖 **Paldex** — les 299 Pals de Palworld 1.0. Survole un Pal pour un aperçu rapide, clique pour ouvrir sa **fiche complète** (stats, éléments, aptitudes de travail, partner skill, passifs, compétences actives, drops, reproduction & capture).
-- 🥚 **Breeding** — calcul direct (Parent 1 + Parent 2 = enfant), **toutes les recettes** d'un Pal, **path finder** (chemin le plus court depuis tes Pals) et **arbre de reproduction** interactif avec **planificateur de talents** : choisis les passifs visés et repère, parmi tes Pals importés, ceux qui les portent (leurs talents s'affichent dans l'arbre).
+- 🥚 **Breeding** — calcul direct (Parent 1 + Parent 2 = enfant), **toutes les recettes** d'un Pal, **path finder** et **arbre de reproduction** en pyramide avec **génération automatique du chemin** depuis tes Pals et **planificateur de talents** : choisis les passifs visés et repère, parmi tes Pals importés, ceux qui les portent (leurs talents s'affichent dans l'arbre).
 - 🎯 **Capture** — estimation du taux de capture par sphère selon le niveau, les PV, la puissance de capture et le bonus dans le dos.
 - 🎒 **Objets** — recherche un objet pour voir **tous les Pals qui le lâchent**, avec la quantité et le taux de drop.
 - 🎮 **Ma partie** — importe la **sauvegarde de ta partie** Palworld pour récupérer tes Pals (équipe, boîte, base) avec leurs **niveaux, IVs et passifs**. Alimente aussi le path finder. *(Import : app de bureau, nécessite Python — voir plus bas.)*
-- 👥 **Team Builder** — équipe de 5, partner skills, **détection des cumuls** (stacking), synergies, couverture élémentaire et aptitudes de travail cumulées.
+- 👥 **Team Builder** — équipe de 5, partner skills, **détection des cumuls** (stacking), synergies, couverture élémentaire et aptitudes de travail cumulées. Sauvegarde plusieurs **builds** (presets) que tu peux recharger et modifier.
 - 📝 **Notes & projets** — carnet local pour planifier tes objectifs.
 
 Interface inspirée des menus du jeu, **100 % en français**, **hors-ligne** (données et images embarquées).
@@ -40,7 +40,7 @@ Survole un Pal pour un aperçu rapide, clique pour ouvrir sa fiche complète :
 
 | Calculateur de reproduction | Arbre de reproduction |
 |:---:|:---:|
-| ![Calculateur de reproduction](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_FaKvIThQjQ.png) | ![Arbre de reproduction](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_7ar0vsYmET.png) |
+| ![Calculateur de reproduction](https://medias.lerobro.com/screenshots/Sohhka/PalGuide_FaKvIThQjQ.png) | ![Arbre de reproduction](https://medias.lerobro.com/screenshots/Sohhka/firefox_gzWSFe05ii.png) |
 
 ### Capture · Équipe · Notes
 

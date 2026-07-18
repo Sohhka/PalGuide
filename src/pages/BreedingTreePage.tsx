@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ChevronRight, ChevronDown, Loader2, Egg, Check, Sparkles, Target as TargetIcon } from 'lucide-react'
+import { ChevronRight, ChevronDown, Loader2, Egg, Check, Sparkles, Target as TargetIcon, Wand2, AlertTriangle } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PalPickerButton } from '../components/PalPicker'
 import { PalIcon } from '../components/PalIcon'
 import { PalTypeBadges } from '../components/badges'
 import { PassivePicker, PassiveChip, passiveRankColor } from '../components/PassivePicker'
 import { RecipeSelect } from '../components/RecipeSelect'
+import { RecipeRow } from '../components/RecipeRow'
+import { PanZoom } from '../components/PanZoom'
 import { useBreedingGraph } from '../lib/useBreedingGraph'
-import { palByKey, palById, passives } from '../data'
+import { pals, palByKey, palById, passives } from '../data'
 import type { BreedingGraph } from '../data'
 import type { Pal, ImportedPal } from '../lib/types'
-import { combosForChild } from '../lib/breeding'
+import { combosForChild, computeShortestSteps, buildOptimalTree, treeToSteps } from '../lib/breeding'
 import { useStore } from '../store/useStore'
-import { palsOfPlayer, importByKey } from '../lib/savedata'
+import { palsOfPlayer, importByKey, ownedKeysFromImport } from '../lib/savedata'
 
 export function BreedingTreePage() {
   const graph = useBreedingGraph()
@@ -41,6 +43,38 @@ export function BreedingTreePage() {
     [desired, myPals],
   )
   const covered = donors.filter((d) => d.instances.length > 0).length
+
+  // ---- Chemin automatique ----
+  const owned = useStore((s) => s.owned)
+  const [autoOpen, setAutoOpen] = useState(false)
+  const [allowUnowned, setAllowUnowned] = useState(false)
+
+  const ownedIdSet = useMemo(() => {
+    const keys = new Set([...owned, ...ownedKeysFromImport(importedSave, selectedPlayerUid)])
+    const s = new Set<number>()
+    for (const k of keys) {
+      const p = palByKey.get(k)
+      if (p) s.add(p.id)
+    }
+    return s
+  }, [owned, importedSave, selectedPlayerUid])
+
+  const auto = useMemo(() => {
+    if (!autoOpen || !target || !graph) return null
+    const available = allowUnowned ? new Set(pals.map((p) => p.id)) : ownedIdSet
+    if (available.size === 0) return { empty: true as const }
+    const steps = computeShortestSteps(graph, available)
+    if (!steps.dist.has(target.id)) return { unreachable: true as const }
+    const tree = buildOptimalTree(steps, target.id, available)
+    const chain = tree ? treeToSteps(tree) : []
+    // Feuilles (Pals de départ) = parents jamais produits comme enfant
+    const childrenIds = new Set(chain.map((s) => s.childId))
+    const leaves = [...new Set(chain.flatMap((s) => [s.a, s.b]))].filter((id) => !childrenIds.has(id))
+    const missingLeaves = leaves.filter((id) => !ownedIdSet.has(id))
+    // Talents manquants (aucun Pal possédé ne les a)
+    const missingPassives = desired.filter((pk) => !myPals.some((p) => p.passives.includes(pk)))
+    return { chain, leaves, missingLeaves, missingPassives, available }
+  }, [autoOpen, allowUnowned, target, graph, ownedIdSet, desired, myPals])
 
   return (
     <>
@@ -123,6 +157,125 @@ export function BreedingTreePage() {
         </div>
       )}
 
+      {/* Chemin automatique */}
+      {target && graph && (
+        <div className="card mb-5 p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="hud-h flex items-center gap-2 text-sm">
+              <Wand2 size={15} /> Chemin automatique vers {target.name}
+            </h2>
+            <div className="flex items-center gap-2">
+              <label className="chip cursor-pointer border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)]">
+                <input
+                  type="checkbox"
+                  className="accent-[var(--color-brand)]"
+                  checked={allowUnowned}
+                  onChange={(e) => setAllowUnowned(e.target.checked)}
+                />
+                Inclure les Pals à capturer
+              </label>
+              <button className="btn btn-brand" onClick={() => setAutoOpen(true)}>
+                <Wand2 size={15} /> Générer
+              </button>
+            </div>
+          </div>
+
+          {!autoOpen ? (
+            <p className="text-sm text-[var(--color-muted)]">
+              Construit la chaîne d'élevage la plus courte vers <b className="text-[var(--color-ink)]">{target.name}</b> à
+              partir des Pals que tu possèdes (importe ta partie dans « Ma partie »). Ajoute des talents ci-dessus pour le
+              plan des talents.
+            </p>
+          ) : auto && 'empty' in auto ? (
+            <WarningBox>
+              Il te manque des Pals de départ (aucun Pal importé).{' '}
+              <button className="font-bold underline" onClick={() => setAllowUnowned(true)}>
+                Inclure les Pals à capturer
+              </button>{' '}
+              pour construire quand même le chemin, ou importe ta partie.
+            </WarningBox>
+          ) : auto && 'unreachable' in auto ? (
+            <p className="text-sm text-[var(--color-muted)]">Ce Pal ne s'obtient pas par reproduction.</p>
+          ) : auto ? (
+            <div className="space-y-3">
+              {auto.missingPassives.length > 0 && (
+                <WarningBox>
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    Talents introuvables dans ta partie :
+                    {auto.missingPassives.map((pk) => (
+                      <PassiveChip key={pk} passiveKey={pk} />
+                    ))}
+                    — capture un Pal qui les porte pour les injecter.
+                  </span>
+                </WarningBox>
+              )}
+              {auto.missingLeaves.length > 0 && (
+                <WarningBox>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span>Il te manque {auto.missingLeaves.length} Pal(s) de départ — à capturer :</span>
+                    {auto.missingLeaves.map((id) => {
+                      const p = palById.get(id)
+                      return p ? (
+                        <span key={id} className="inline-flex items-center gap-1">
+                          <PalIcon pal={p} size={16} /> {p.name}
+                        </span>
+                      ) : null
+                    })}
+                  </div>
+                </WarningBox>
+              )}
+
+              <div className="flex items-center gap-2">
+                <span className="chip bg-[var(--color-surface-2)] text-[var(--color-brand)]">
+                  {auto.chain.length} élevage{auto.chain.length > 1 ? 's' : ''}
+                </span>
+                <span className="text-sm text-[var(--color-muted)]">Chaîne la plus courte</span>
+              </div>
+
+              {auto.chain.length === 0 ? (
+                <p className="text-sm text-[var(--color-good)]">Tu possèdes déjà {target.name} !</p>
+              ) : (
+                <ol className="space-y-2">
+                  {auto.chain.map((step, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="mt-3 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-surface-2)] text-xs font-bold text-[var(--color-brand)]">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1">
+                        <RecipeRow a={step.a} b={step.b} child={step.childId} highlightChild={step.childId === target.id} />
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+
+              {auto.leaves.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--color-border-soft)] pt-2 text-xs">
+                  <span className="text-[var(--color-faint)]">Pals de départ :</span>
+                  {auto.leaves.map((id) => {
+                    const p = palById.get(id)
+                    if (!p) return null
+                    const isOwned = ownedIdSet.has(id)
+                    return (
+                      <span
+                        key={id}
+                        className="chip"
+                        style={{
+                          color: isOwned ? 'var(--color-good)' : 'var(--color-warn)',
+                          background: 'var(--color-surface-2)',
+                        }}
+                      >
+                        <PalIcon pal={p} size={16} /> {p.name} {isOwned ? '✓' : '· à capturer'}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {!target ? (
         <div className="card grid place-items-center py-16 text-center text-[var(--color-muted)]">
           Choisis un Pal pour construire son arbre de reproduction.
@@ -132,11 +285,24 @@ export function BreedingTreePage() {
           <Loader2 className="animate-spin" /> Chargement…
         </div>
       ) : (
-        <div className="card overflow-x-auto p-4">
-          <BreedNode graph={graph} palId={target.id} ancestors={[]} depth={0} desired={desiredSet} myByKey={myByKey} isRoot />
+        <div className="card overflow-hidden">
+          <PanZoom>
+            <ul className="ftree p-10">
+              <BreedNode graph={graph} palId={target.id} ancestors={[]} depth={0} desired={desiredSet} myByKey={myByKey} isRoot />
+            </ul>
+          </PanZoom>
         </div>
       )}
     </>
+  )
+}
+
+function WarningBox({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex gap-2 rounded border border-[color-mix(in_srgb,var(--color-warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-warn)_10%,transparent)] p-2.5 text-sm text-[var(--color-warn)]">
+      <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+      <div className="min-w-0">{children}</div>
+    </div>
   )
 }
 
@@ -177,58 +343,51 @@ function BreedNode({
   const recipe = combos[Math.min(recipeIdx, combos.length - 1)]
   const best = bestInstance(instances, desired)
   const hits = best ? best.passives.filter((p) => desired.has(p)).length : 0
+  const comboText = recipe ? `${palById.get(recipe[0])?.name} + ${palById.get(recipe[1])?.name}` : ''
 
   return (
-    <div className="relative">
-      <div className="flex items-start gap-2 py-1">
-        {canExpand ? (
-          <button
-            onClick={() => setExpanded((e) => !e)}
-            className="mt-1.5 grid h-6 w-6 shrink-0 place-items-center border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] hover:text-[var(--color-brand)]"
-          >
-            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </button>
-        ) : (
-          <span className="mt-1.5 grid h-6 w-6 shrink-0 place-items-center text-[var(--color-faint)]">·</span>
-        )}
-
+    <li>
+      <div className="inline-flex flex-col items-center align-top">
+        {/* Carte du Pal */}
         <div
-          className={`min-w-0 border px-2 py-1.5 ${
+          className={`w-[164px] border p-2 text-center ${
             isRoot
               ? 'border-[var(--color-brand)] bg-[var(--color-surface-2)]'
               : owned
-                ? 'border-[color-mix(in_srgb,var(--color-good)_45%,transparent)] bg-[var(--color-surface)]'
+                ? 'border-[color-mix(in_srgb,var(--color-good)_55%,transparent)] bg-[var(--color-surface)]'
                 : 'border-[var(--color-border)] bg-[var(--color-surface)]'
           }`}
+          title={canExpand ? `Issu de : ${comboText}` : undefined}
         >
-          <div className="flex items-center gap-2">
-            <Link to={`/paldex/${pal.key}`}>
-              <PalIcon pal={pal} size={34} ring />
-            </Link>
-            <span className="min-w-0">
-              <span className="flex flex-wrap items-center gap-1.5 text-sm font-bold">
-                {pal.name}
-                {isRoot && <Egg size={13} className="text-[var(--color-brand)]" />}
-                {owned ? (
-                  <span className="chip bg-[color-mix(in_srgb,var(--color-good)_15%,transparent)] text-[10px] text-[var(--color-good)]">
-                    <Check size={10} /> possédé ×{instances.length}
-                  </span>
-                ) : (
-                  <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-faint)]">à obtenir</span>
-                )}
-                {desired.size > 0 && owned && (
-                  <span className={`chip text-[10px] ${hits > 0 ? 'text-[var(--color-good)]' : 'text-[var(--color-faint)]'}`} style={{ background: 'var(--color-surface-2)' }}>
-                    {hits}/{desired.size} talents visés
-                  </span>
-                )}
-              </span>
-              <PalTypeBadges pal={pal} size="sm" />
-            </span>
+          <Link to={`/paldex/${pal.key}`} className="inline-block">
+            <PalIcon pal={pal} size={44} ring />
+          </Link>
+          <div className="mt-1 flex items-center justify-center gap-1 text-sm font-bold leading-tight">
+            {pal.name}
+            {isRoot && <Egg size={12} className="text-[var(--color-brand)]" />}
           </div>
-
-          {/* Talents du Pal possédé (le meilleur exemplaire) */}
+          <div className="mt-0.5 flex flex-wrap justify-center gap-1">
+            <PalTypeBadges pal={pal} size="sm" />
+          </div>
+          <div className="mt-1 flex flex-wrap justify-center gap-1">
+            {owned ? (
+              <span className="chip bg-[color-mix(in_srgb,var(--color-good)_15%,transparent)] text-[10px] text-[var(--color-good)]">
+                <Check size={10} /> possédé ×{instances.length}
+              </span>
+            ) : (
+              <span className="chip bg-[var(--color-surface-2)] text-[10px] text-[var(--color-faint)]">à obtenir</span>
+            )}
+            {desired.size > 0 && owned && (
+              <span
+                className={`chip text-[10px] ${hits > 0 ? 'text-[var(--color-good)]' : 'text-[var(--color-faint)]'}`}
+                style={{ background: 'var(--color-surface-2)' }}
+              >
+                {hits}/{desired.size} talents
+              </span>
+            )}
+          </div>
           {best && best.passives.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
+            <div className="mt-1 flex flex-wrap justify-center gap-1">
               {best.passives.map((pk) => {
                 const info = passives[pk]
                 const isDesired = desired.has(pk)
@@ -236,7 +395,7 @@ function BreedNode({
                 return (
                   <span
                     key={pk}
-                    className="chip text-[10px]"
+                    className="chip text-[9px]"
                     style={{
                       color: isDesired ? '#04222c' : color,
                       background: isDesired ? color : `color-mix(in srgb, ${color} 12%, transparent)`,
@@ -244,28 +403,38 @@ function BreedNode({
                     }}
                     title={info?.description ?? undefined}
                   >
-                    {isDesired && <Check size={9} />} {info?.name ?? pk}
+                    {isDesired && <Check size={8} />} {info?.name ?? pk}
                   </span>
                 )
               })}
             </div>
           )}
+          {cycle && <div className="mt-1 text-[10px] text-[var(--color-faint)]">↺ boucle</div>}
         </div>
 
-        {canExpand && combos.length > 1 && expanded && (
-          <div className="mt-1">
-            <RecipeSelect combos={combos} value={recipeIdx} onChange={setRecipeIdx} />
+        {/* Contrôles : déplier + choix de recette */}
+        {canExpand && (
+          <div className="mt-1 flex items-center gap-1.5">
+            <button
+              onClick={() => setExpanded((e) => !e)}
+              className="inline-flex items-center gap-1 border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1 text-xs font-semibold text-[var(--color-muted)] hover:text-[var(--color-brand)]"
+            >
+              {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+              {expanded ? 'Masquer' : combos.length > 1 ? `${combos.length} recettes` : 'Déplier'}
+            </button>
+            {expanded && combos.length > 1 && (
+              <RecipeSelect combos={combos} value={recipeIdx} onChange={setRecipeIdx} />
+            )}
           </div>
         )}
-        {cycle && <span className="mt-2 text-xs text-[var(--color-faint)]">↺ boucle</span>}
       </div>
 
       {canExpand && expanded && recipe && (
-        <div className="ml-3 border-l border-[var(--color-border)] pl-4">
+        <ul>
           <BreedNode graph={graph} palId={recipe[0]} ancestors={[...ancestors, palId]} depth={depth + 1} desired={desired} myByKey={myByKey} />
           <BreedNode graph={graph} palId={recipe[1]} ancestors={[...ancestors, palId]} depth={depth + 1} desired={desired} myByKey={myByKey} />
-        </div>
+        </ul>
       )}
-    </div>
+    </li>
   )
 }

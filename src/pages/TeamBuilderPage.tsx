@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus, X, Layers, AlertTriangle, Sparkles, Users, Trash2 } from 'lucide-react'
+import { Plus, X, Layers, AlertTriangle, Sparkles, Users, Trash2, Save, Bookmark, Pencil, Check } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PalPickerModal } from '../components/PalPicker'
 import { PalIcon } from '../components/PalIcon'
@@ -10,12 +10,24 @@ import { analyzeTeam } from '../lib/partnerSkills'
 import type { Pal } from '../lib/types'
 
 export function TeamBuilderPage() {
-  const { team, setTeamSlot, clearTeam } = useStore()
+  const { team, setTeamSlot, clearTeam, teamPresets, saveTeamPreset, loadTeamPreset, updateTeamPreset, renameTeamPreset, deleteTeamPreset } =
+    useStore()
   const [pickerSlot, setPickerSlot] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [presetName, setPresetName] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
 
   const members = useMemo(() => team.map((k) => (k ? palByKey.get(k) ?? null : null)), [team])
   const analysis = useMemo(() => analyzeTeam(members), [members])
   const filled = members.filter(Boolean).length
+
+  // Preset actuellement affiché dans les emplacements (mêmes Pals, mêmes positions)
+  const activePresetId = useMemo(() => {
+    if (filled === 0) return null
+    const p = teamPresets.find((pr) => pr.team.length === team.length && pr.team.every((k, i) => (k ?? null) === (team[i] ?? null)))
+    return p?.id ?? null
+  }, [teamPresets, team, filled])
 
   return (
     <>
@@ -31,6 +43,123 @@ export function TeamBuilderPage() {
           ) : undefined
         }
       />
+
+      {/* Presets d'équipe */}
+      <div className="card mb-5 p-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="hud-h flex items-center gap-2 text-sm">
+            <Bookmark size={15} /> Mes builds
+          </h2>
+          {saving ? (
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                className="input w-48 py-1 text-sm"
+                placeholder="Nom du build…"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && presetName.trim()) {
+                    saveTeamPreset(presetName)
+                    setPresetName('')
+                    setSaving(false)
+                  } else if (e.key === 'Escape') setSaving(false)
+                }}
+              />
+              <button
+                className="btn btn-brand py-1"
+                disabled={!presetName.trim()}
+                onClick={() => {
+                  saveTeamPreset(presetName)
+                  setPresetName('')
+                  setSaving(false)
+                }}
+              >
+                <Check size={15} /> OK
+              </button>
+              <button className="btn py-1" onClick={() => setSaving(false)}>
+                <X size={15} />
+              </button>
+            </div>
+          ) : (
+            <button className="btn" onClick={() => setSaving(true)} disabled={filled === 0} title={filled === 0 ? 'Ajoute des Pals d\'abord' : ''}>
+              <Save size={15} /> Sauvegarder ce build
+            </button>
+          )}
+        </div>
+
+        {teamPresets.length === 0 ? (
+          <p className="text-sm text-[var(--color-faint)]">Aucun build sauvegardé. Compose une équipe puis clique sur « Sauvegarder ce build ».</p>
+        ) : (
+          <>
+            <p className="mb-2 text-xs text-[var(--color-faint)]">
+              Clique sur un build pour le <span className="text-[var(--color-brand)]">charger</span> dans les emplacements ci-dessous et voir tous ses Pals en grand.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {teamPresets.map((p) => {
+                const count = p.team.filter(Boolean).length
+                const icons = p.team.filter((k): k is string => !!k).map((k) => palByKey.get(k)).filter(Boolean) as Pal[]
+                const active = activePresetId === p.id
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center gap-1.5 border p-1.5 transition-colors ${
+                      active
+                        ? 'border-[var(--color-brand)] bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface-2))] shadow-[0_0_12px_rgba(79,205,236,0.25)]'
+                        : 'border-[var(--color-border)] bg-[var(--color-surface-2)]'
+                    }`}
+                  >
+                    {editingId === p.id ? (
+                      <input
+                        autoFocus
+                        className="input w-36 py-0.5 text-sm"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { renameTeamPreset(p.id, editName); setEditingId(null) }
+                          else if (e.key === 'Escape') setEditingId(null)
+                        }}
+                        onBlur={() => { renameTeamPreset(p.id, editName); setEditingId(null) }}
+                      />
+                    ) : (
+                      <button
+                        className="group flex items-center gap-1.5 pl-1"
+                        onClick={() => loadTeamPreset(p.id)}
+                        title={active ? 'Build déjà chargé' : 'Charger ce build dans les emplacements'}
+                      >
+                        <span className="flex -space-x-1.5">
+                          {icons.slice(0, 5).map((pal, i) => (
+                            <PalIcon key={i} pal={pal} size={22} ring />
+                          ))}
+                        </span>
+                        <span className="text-sm font-semibold">{p.name}</span>
+                        {active ? (
+                          <span className="chip bg-[color-mix(in_srgb,var(--color-brand)_20%,transparent)] text-[10px] text-[var(--color-brand)]">
+                            <Check size={11} /> Chargée
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-[var(--color-faint)] group-hover:text-[var(--color-brand)]">{count}/5 · charger</span>
+                        )}
+                      </button>
+                    )}
+                    <div className="flex items-center border-l border-[var(--color-border)] pl-1">
+                      <button className="rounded p-1 text-[var(--color-faint)] hover:text-[var(--color-brand)]" title="Mettre à jour avec l'équipe actuelle" onClick={() => updateTeamPreset(p.id)}>
+                        <Save size={13} />
+                      </button>
+                      <button className="rounded p-1 text-[var(--color-faint)] hover:text-[var(--color-ink)]" title="Renommer" onClick={() => { setEditingId(p.id); setEditName(p.name) }}>
+                        <Pencil size={13} />
+                      </button>
+                      <button className="rounded p-1 text-[var(--color-faint)] hover:text-[var(--color-bad)]" title="Supprimer" onClick={() => deleteTeamPreset(p.id)}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Slots */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
