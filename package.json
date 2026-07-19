@@ -1,7 +1,7 @@
 {
   "name": "palguide",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "PalGuide — compagnon Palworld 1.0 : Paldex, Breeding, Capture, Team Builder (FR)",
   "author": "PalGuide",
@@ -21,7 +21,8 @@
     "build-spawns": "node scripts/build-spawns.mjs",
     "build-equipment": "node scripts/build-equipment.mjs",
     "build-schematics": "node scripts/build-schematics.mjs",
-    "build-items-catalog": "node scripts/build-items-catalog.mjs"
+    "build-items-catalog": "node scripts/build-items-catalog.mjs",
+    "build-item-descriptions": "node scripts/build-item-descriptions.mjs"
   },
   "dependencies": {
     "fuse.js": "^7.0.0",
@@ -29,7 +30,9 @@
     "oozextract": "^0.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^6.28.0",
+    "remark-gfm": "^4.0.1",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

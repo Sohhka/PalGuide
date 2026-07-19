@@ -93,6 +93,11 @@ export function loadEquipment(): Promise<EquipData> {
 }
 
 // ---- Catalogue d'items (éditeur d'inventaire) : chargé à la demande ----
+export interface RecipeMat {
+  name: string
+  icon: string | null
+  qty: number | null
+}
 export interface ItemCatalogEntry {
   id: string // StaticId (= asset) tel que stocké dans la save
   name: string // nom (français si dispo, sinon anglais)
@@ -102,6 +107,9 @@ export interface ItemCatalogEntry {
   cat: string // catégorie d'affichage
   stack: boolean // empilable (sinon équipement à données dynamiques)
   sort: number
+  desc?: string // description (FR de préférence, sinon EN)
+  price?: number // valeur en pièces d'or
+  recipe?: RecipeMat[] // matériaux de fabrication
 }
 let itemsCatalogPromise: Promise<ItemCatalogEntry[]> | null = null
 export function loadItemsCatalog(): Promise<ItemCatalogEntry[]> {
