@@ -110,6 +110,9 @@ export interface ItemCatalogEntry {
   desc?: string // description (FR de préférence, sinon EN)
   price?: number // valeur en pièces d'or
   recipe?: RecipeMat[] // matériaux de fabrication
+  /** équipement à données propres (DynamicItemSaveData) : type + durabilité max.
+   *  Source faisant autorité : items_dynamic du jeu. Absent = objet empilable. */
+  dyn?: { t: 'weapon' | 'armor'; d: number }
 }
 let itemsCatalogPromise: Promise<ItemCatalogEntry[]> | null = null
 export function loadItemsCatalog(): Promise<ItemCatalogEntry[]> {

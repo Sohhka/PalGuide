@@ -327,6 +327,13 @@ def extract(level_path, player_paths):
                 "shot": scalar(sp.get("Talent_Shot", {})) if isinstance(scalar(sp.get("Talent_Shot", {})), int) else 0,
                 "defense": scalar(sp.get("Talent_Defense", {})) if isinstance(scalar(sp.get("Talent_Defense", {})), int) else 0,
             },
+            # âmes de Pal (Statue du Pouvoir) : Rank_* (octets 0..20), absents si 0
+            "souls": {
+                "hp": scalar(sp.get("Rank_HP", {})) if isinstance(scalar(sp.get("Rank_HP", {})), int) else 0,
+                "atk": scalar(sp.get("Rank_Attack", {})) if isinstance(scalar(sp.get("Rank_Attack", {})), int) else 0,
+                "def": scalar(sp.get("Rank_Defence", {})) if isinstance(scalar(sp.get("Rank_Defence", {})), int) else 0,
+                "work": scalar(sp.get("Rank_CraftSpeed", {})) if isinstance(scalar(sp.get("Rank_CraftSpeed", {})), int) else 0,
+            },
             "passives": passives,
             "activeSkills": active_skills,
             "ownerUid": owner,

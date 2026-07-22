@@ -7,6 +7,11 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, M
 const RARITY_COLOR = ['#9ca3af', '#4ade80', '#60a5fa', '#c084fc', '#fbbf24']
 const stripDia = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
+// L'équipement à données propres (DynamicItemSaveData) est identifié par le champ
+// `dyn` du catalogue (source faisant autorité : items_dynamic du jeu). Absent =
+// objet empilable normal. Les grenades (cat « Weapon » mais empilables) et les
+// œufs (cat « Material » mais dynamiques) sont donc classés correctement.
+
 interface Row { key: string; slotIndex: number | null; id: string; count: number; dyn: boolean }
 let seq = 0
 
@@ -31,7 +36,7 @@ export function InventoryEditModal({
   const [adding, setAdding] = useState(false)
   const [q, setQ] = useState('')
   const [saving, setSaving] = useState(false)
-  const [result, setResult] = useState<{ ok: true; backupPath?: string } | { ok: false; msg: string } | null>(null)
+  const [result, setResult] = useState<{ ok: true; backupPath?: string; skipped?: number } | { ok: false; msg: string } | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -66,7 +71,8 @@ export function InventoryEditModal({
   const icon = (id: string) => byId.get(id)?.icon ?? null
   const rarity = (id: string) => byId.get(id)?.rarity ?? 0
 
-  const usedSlots = rows.filter((r) => r.slotIndex != null).length
+  // Les lignes affichées (existantes conservées + ajouts en attente) occuperont des slots.
+  const usedSlots = rows.length
   const freeSlots = Math.max(0, slotNum - usedSlots)
 
   // Diff -> opérations d'inventaire
@@ -80,23 +86,30 @@ export function InventoryEditModal({
       else if (cur.count !== o.count) out.push({ containerId, action: 'count', slotIndex: o.slotIndex!, count: clamp(cur.count, 1, 9999999) })
     }
     for (const r of rows) {
-      if (r.slotIndex == null) out.push({ containerId, action: 'add', staticId: r.id, count: clamp(r.count, 1, 9999999) })
+      if (r.slotIndex == null) {
+        const info = byId.get(r.id)?.dyn
+        out.push({
+          containerId, action: 'add', staticId: r.id,
+          count: info ? 1 : clamp(r.count, 1, 9999999),
+          ...(info ? { dynType: info.t, durability: info.d } : {}),
+        })
+      }
     }
     return out
-  }, [rows, original, containerId])
+  }, [rows, original, containerId, byId])
 
   const canSave = ops.length > 0 && !saving && !loading
 
   const addItem = (e: ItemCatalogEntry) => {
-    setRows((rs) => [{ key: `n${seq++}`, slotIndex: null, id: e.id, count: 1, dyn: false }, ...rs])
+    setRows((rs) => [{ key: `n${seq++}`, slotIndex: null, id: e.id, count: 1, dyn: !!e.dyn }, ...rs])
     setAdding(false); setQ('')
   }
 
   const filtered = useMemo(() => {
     const qq = stripDia(q.trim())
-    let list = catalog.filter((e) => e.stack) // items empilables (pas d'équipement à durabilité)
+    let list = catalog // TOUS les objets du jeu (équipement inclus)
     if (qq) list = list.filter((e) => stripDia(e.name).includes(qq) || (e.nameEn && stripDia(e.nameEn).includes(qq)) || e.id.toLowerCase().includes(qq))
-    return list.slice(0, 60)
+    return list.slice(0, 80)
   }, [catalog, q])
 
   const save = async () => {
@@ -114,8 +127,11 @@ export function InventoryEditModal({
         setResult({ ok: false, msg: (MSG[res.error] ?? MSG.ERROR) + (res.detail ? `\n${res.detail}` : '') })
         return
       }
+      // filet de sécurité : signale d'éventuels ajouts non écrits faute de place
+      const inv = res.result?.applied?.find((a) => a.kind === 'inventory') as { changes?: Array<{ result?: string }> } | undefined
+      const skipped = (inv?.changes ?? []).filter((c) => c.result === 'container_full').length
       // resynchronise l'état "original" sur les valeurs enregistrées (les ajouts deviennent des slots existants)
-      setResult({ ok: true, backupPath: res.backupPath })
+      setResult({ ok: true, backupPath: res.backupPath, skipped })
       setOriginal(rows.map((r) => ({ ...r })))
     } catch (e) {
       setResult({ ok: false, msg: String((e as Error).message) })
@@ -147,7 +163,7 @@ export function InventoryEditModal({
           <div className="border-b border-[var(--color-border)] bg-[var(--color-bg-soft)] p-3">
             <div className="relative mb-2">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-faint)]" />
-              <input autoFocus className="input pl-9" placeholder="Rechercher un item (nom anglais ou ID)…" value={q} onChange={(e) => setQ(e.target.value)} />
+              <input autoFocus className="input pl-9" placeholder="Rechercher parmi tous les objets (nom FR/EN ou ID)…" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
             <div className="max-h-56 space-y-0.5 overflow-y-auto">
               {filtered.map((e) => (
@@ -184,9 +200,10 @@ export function InventoryEditModal({
                     </div>
                     <span className="text-[10px]" style={{ color: RARITY_COLOR[rarity(r.id)] }}>{byId.get(r.id)?.cat || r.id}</span>
                   </div>
-                  <input type="number" min={1} max={9999999} value={r.count}
+                  <input type="number" min={1} max={9999999} value={r.dyn ? 1 : r.count} disabled={r.dyn}
+                    title={r.dyn ? 'L\'équipement ne s\'empile pas (quantité fixée à 1)' : undefined}
                     onChange={(ev) => setRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, count: clamp(+ev.target.value, 1, 9999999) } : x)))}
-                    className="input w-24 py-1 text-center tabular-nums" />
+                    className="input w-24 py-1 text-center tabular-nums disabled:opacity-40" />
                   <button className="btn-icon text-[var(--color-faint)] hover:text-[var(--color-bad)]" title="Retirer"
                     onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}>
                     <Trash2 size={15} />
@@ -201,11 +218,11 @@ export function InventoryEditModal({
         <div className="space-y-2 border-t border-[var(--color-border)] bg-[var(--color-surface)] p-3">
           <div className="flex gap-2 rounded border border-[color-mix(in_srgb,var(--color-warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-warn)_10%,transparent)] p-2 text-[11px] text-[var(--color-warn)]">
             <ShieldAlert size={14} className="mt-0.5 shrink-0" />
-            <span>Ferme Palworld avant d'enregistrer. Backup auto de ton <code>Level.sav</code>. L'ajout d'équipement (armes/armures) n'est pas proposé (données propres).</span>
+            <span>Ferme Palworld avant d'enregistrer. Backup auto de ton <code>Level.sav</code>. L'équipement (armes, armures, planeurs, accessoires…) est ajouté avec une <strong>durabilité maximale</strong> et une quantité de 1.</span>
           </div>
           {result?.ok === true && (
             <div className="flex gap-2 rounded border border-[color-mix(in_srgb,var(--color-good)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-good)_10%,transparent)] p-2 text-sm text-[var(--color-good)]">
-              <Check size={16} className="mt-0.5 shrink-0" /><div><strong>Enregistré.</strong>{result.backupPath && <span className="mt-0.5 block break-all text-xs opacity-80">Backup : {result.backupPath}</span>}</div>
+              <Check size={16} className="mt-0.5 shrink-0" /><div><strong>Enregistré.</strong>{result.skipped ? <span className="mt-0.5 block text-xs text-[var(--color-warn)]">{result.skipped} objet{result.skipped > 1 ? 's' : ''} non ajouté{result.skipped > 1 ? 's' : ''} (inventaire plein).</span> : null}{result.backupPath && <span className="mt-0.5 block break-all text-xs opacity-80">Backup : {result.backupPath}</span>}</div>
             </div>
           )}
           {result?.ok === false && (

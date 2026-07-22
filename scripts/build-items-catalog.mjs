@@ -62,7 +62,7 @@ async function frenchNames() {
 }
 
 async function main() {
-  const { items } = JSON.parse(readFileSync(join(PST, 'items.json'), 'utf8'))
+  const { items, items_dynamic } = JSON.parse(readFileSync(join(PST, 'items.json'), 'utf8'))
   mkdirSync(DEST_ICONS, { recursive: true })
   const existing = new Set(existsSync(DEST_ICONS) ? readdirSync(DEST_ICONS) : [])
   const fr = await frenchNames()
@@ -86,6 +86,12 @@ async function main() {
     if (fr.byId[id]) { nameFr = fr.byId[id]; frDirect++ }
     else if (fr.enToFr[norm(en)]) { nameFr = fr.enToFr[norm(en)]; frViaEn++ }
     const cat = it.type_a_display || ''
+    // Équipement à données propres (arme/armure/planeur/accessoire…) : source
+    // faisant autorité = items_dynamic (le stack flag par catégorie est peu fiable).
+    const din = items_dynamic?.[id]?.dynamic
+    const dyn = din && (din.type === 'weapon' || din.type === 'armor')
+      ? { t: din.type, d: Math.round((din.durability ?? 0) * 10) / 10 }
+      : undefined
     out.push({
       id,
       name: nameFr || en, // FR si dispo, sinon EN
@@ -95,6 +101,7 @@ async function main() {
       cat,
       stack: !NON_STACK.has(cat),
       sort: it.sort_id ?? 0,
+      ...(dyn ? { dyn } : {}),
     })
   }
   out.sort((a, b) => a.name.localeCompare(b.name, 'fr'))

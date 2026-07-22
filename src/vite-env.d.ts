@@ -51,6 +51,11 @@ interface CreatePalOp {
   gender?: string
   passives?: string[]
   rank?: number
+  /** âmes de Pal (Statue du Pouvoir), 0–20 par attribut */
+  soulHp?: number
+  soulAtk?: number
+  soulDef?: number
+  soulWork?: number
 }
 
 interface EditPlayerResult {
@@ -88,6 +93,10 @@ interface InventoryOp {
   slotIndex?: number
   staticId?: string
   count?: number
+  /** équipement à créer avec des données propres (arme/armure/planeur…) */
+  dynType?: 'weapon' | 'armor'
+  /** durabilité max (depuis items_dynamic) pour l'entrée dynamique créée */
+  durability?: number
 }
 
 interface InventorySlot {

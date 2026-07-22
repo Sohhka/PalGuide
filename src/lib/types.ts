@@ -132,6 +132,7 @@ export interface ImportedPal {
   stars: number // rang de condensation 0..4 (0 si save importée avant cette version)
   nickname: string | null
   iv: { hp: number; melee: number; shot: number; defense: number }
+  souls?: { hp: number; atk: number; def: number; work: number } // âmes (Statue du Pouvoir), 0..20
   passives: string[]
   activeSkills?: string[] // compétences actives équipées (assets, ex. "PowerBall")
   location: PalLocation

@@ -47,6 +47,7 @@ interface RawImport {
     stars?: number
     nickname: string | null
     iv: { hp: number; melee: number; shot: number; defense: number }
+    souls?: { hp: number; atk: number; def: number; work: number }
     passives: string[]
     activeSkills?: string[]
     location: PalLocation

@@ -190,7 +190,9 @@ def read_savedata(sd, field):
 # --- Inventaire (ItemContainerSaveData de Level.sav) ---
 IC_KEY = ".worldSaveData.ItemContainerSaveData.Value.RawData"
 ICS_KEY = ".worldSaveData.ItemContainerSaveData.Value.Slots.Slots.RawData"
-ZERO_GUID = uuid.UUID(int=0)
+DI_KEY = ".worldSaveData.DynamicItemSaveData.DynamicItemSaveData.RawData"
+# GUID nul (chaîne) : accepté par tous les writers guid ; sert aussi aux comparaisons str.
+ZERO_GUID = "00000000-0000-0000-0000-000000000000"
 
 def index_containers(gvas):
     """GUID (minuscule) -> valeur du conteneur (SlotNum, Slots, ...)."""
@@ -213,9 +215,66 @@ def _template_slot(containers):
             return vals[0]
     return None
 
-def apply_inventory(containers, inv_ops):
-    """Applique les opérations d'inventaire. Retourne (changes, template utilisé pour add)."""
+# ---------------------------------------------------------------------------
+# Objets dynamiques (équipement : armes/armures/planeurs/accessoires…)
+#
+# L'équipement possède une entrée DynamicItemSaveData (durabilité, munitions,
+# passifs) référencée par le slot via `dynamic_id.local_id_in_created_world`.
+# Structure d'octets constante -> on clone un template existant du bon type
+# (weapon/armor) et on surcharge id + static_id + durabilité.
+# ---------------------------------------------------------------------------
+def _dynamic_ctx(wsd):
+    di = wsd.get("DynamicItemSaveData")
+    if di is None:
+        return None
+    entries = di["value"]["values"]
+    templates = {}
+    for e in entries:
+        t = e.get("RawData", {}).get("value", {}).get("type")
+        if t in ("weapon", "armor") and t not in templates:
+            templates[t] = e
+    return {"entries": entries, "templates": templates, "any": entries[0] if entries else None}
+
+def _add_dynamic_item(ctx, static_id, dyn_type, durability=None):
+    """Crée une entrée DynamicItemSaveData et renvoie son local_id (uuid), ou None.
+    `durability` = valeur max (items_dynamic) ; défaut élevé si non fournie."""
+    if ctx is None:
+        return None
+    dura = float(durability) if durability is not None else 999999.0
+    tmpl = ctx["templates"].get(dyn_type)
+    local_id = uuid.uuid4()
+    if tmpl is not None:
+        new = copy.deepcopy(tmpl)
+        val = new["RawData"]["value"]
+        val["id"] = {"created_world_id": ZERO_GUID, "local_id_in_created_world": local_id, "static_id": str(static_id)}
+        val["type"] = dyn_type
+        val["durability"] = dura
+        if dyn_type == "weapon":
+            val["remaining_bullets"] = 0
+            val["passive_skill_list"] = []
+    elif ctx["any"] is not None:
+        # aucun template du type demandé : on réutilise le wrapper d'une entrée
+        # quelconque et on reconstruit la valeur (octets de bordure constants).
+        new = copy.deepcopy(ctx["any"])
+        val = {"type": dyn_type,
+               "id": {"created_world_id": ZERO_GUID, "local_id_in_created_world": local_id, "static_id": str(static_id)},
+               "leading_bytes": [0, 0, 0, 0], "durability": dura}
+        if dyn_type == "weapon":
+            val["remaining_bullets"] = 0
+            val["passive_skill_list"] = []
+            val["trailing_bytes"] = [5, 0, 0, 0]
+        else:
+            val["trailing_bytes"] = [0, 0, 0, 0]
+        new["RawData"]["value"] = val
+    else:
+        return None
+    ctx["entries"].append(new)
+    return local_id
+
+def apply_inventory(containers, inv_ops, wsd=None):
+    """Applique les opérations d'inventaire. Retourne la liste des changements."""
     template = None
+    dyn_ctx = _dynamic_ctx(wsd) if wsd is not None else None
     changes = []
     for op in inv_ops:
         cid = str(op["containerId"]).lower()
@@ -252,19 +311,22 @@ def apply_inventory(containers, inv_ops):
             new = copy.deepcopy(src)
             rv = _slot_rv(new)
             rv["slot_index"] = free
-            rv["count"] = int(op["count"])
             rv["item"]["static_id"] = str(op["staticId"])
+            # Équipement : crée l'entrée dynamique et lie le slot ; sinon GUID nul.
+            # L'équipement ne s'empile pas -> count forcé à 1 (une entrée par objet).
+            dyn_type = op.get("dynType")
+            rv["count"] = 1 if dyn_type else int(op["count"])
+            local_id = _add_dynamic_item(dyn_ctx, op["staticId"], dyn_type, op.get("durability")) if dyn_type else None
             rv["item"]["dynamic_id"]["created_world_id"] = ZERO_GUID
-            rv["item"]["dynamic_id"]["local_id_in_created_world"] = ZERO_GUID
+            rv["item"]["dynamic_id"]["local_id_in_created_world"] = local_id if local_id is not None else ZERO_GUID
             cont["Slots"]["value"]["values"].append(new)
-            changes.append({**op, "slotIndex": free})
+            changes.append({**op, "slotIndex": free, "dynamic": local_id is not None})
     return changes
 
 # --- Création de Pals (clone d'un Pal existant du joueur + surcharge) ---
 CC_KEY = ".worldSaveData.CharacterContainerSaveData.Value.Slots.Slots.RawData"
 GRP_KEY = ".worldSaveData.GroupSaveDataMap"
 MO_KEY = ".worldSaveData.MapObjectSaveData"
-ZERO_GUID = "00000000-0000-0000-0000-000000000000"
 
 def _uuid(v):
     try: return v if isinstance(v, uuid.UUID) else uuid.UUID(str(v))
@@ -369,6 +431,15 @@ def create_pals(gvas, specs):
         if ex is not None: set_field(sp, "Exp", ex)
         for f, k in (("Talent_HP", "ivHp"), ("Talent_Shot", "ivShot"), ("Talent_Defense", "ivDefense")):
             if k in spec: set_field(sp, f, int(spec[k]))
+        # âmes de Pal (Statue du Pouvoir) : on normalise toujours à la valeur demandée
+        # (0 -> on retire le champ, comme un pal naturel ; évite l'héritage du template).
+        for f, k in (("Rank_HP", "soulHp"), ("Rank_Attack", "soulAtk"),
+                     ("Rank_Defence", "soulDef"), ("Rank_CraftSpeed", "soulWork")):
+            val = int(spec.get(k, 0) or 0)
+            if val > 0:
+                set_field(sp, f, val)
+            elif f in sp:
+                del sp[f]
         if spec.get("gender"): set_field(sp, "Gender", spec["gender"])
         if spec.get("nickname"): set_field(sp, "NickName", spec["nickname"])
         set_field(sp, "PassiveSkillList", spec.get("passives", []))
@@ -477,6 +548,8 @@ def main():
     data = open(gvas_in, "rb").read()
     need_char = bool(char_edits)
     need_inv = bool(inv_ops)
+    # ajout d'équipement -> il faut aussi décoder DynamicItemSaveData
+    need_dyn = any(op.get("action") == "add" and op.get("dynType") for op in inv_ops)
     need_create = bool(create_specs)
     need_guild = bool(guild_admin)
     need_unlock = unlock_chests
@@ -485,6 +558,8 @@ def main():
         wanted.add(CHAR_KEY)
     if need_inv:
         wanted.update((IC_KEY, ICS_KEY))
+    if need_dyn:
+        wanted.add(DI_KEY)
     if need_create:
         wanted.update((CHAR_KEY, CC_KEY, GRP_KEY))
     if need_guild:
@@ -531,7 +606,7 @@ def main():
     # --- éditions d'inventaire (Level.sav) ---
     if need_inv:
         containers = index_containers(gvas)
-        inv_changes = apply_inventory(containers, inv_ops)
+        inv_changes = apply_inventory(containers, inv_ops, wsd=gvas.properties["worldSaveData"]["value"] if need_dyn else None)
         applied.append({"kind": "inventory", "changes": inv_changes})
 
     # --- création de Pals (Level.sav) ---
@@ -577,8 +652,18 @@ def main():
                 mismatches.append({"saveData": field, "want": want, "got": got})
     if need_inv:
         conts2 = index_containers(gvas2)
+        # slots (conteneur, index) où un ajout a atterri : un « remove » sur un slot
+        # ensuite réutilisé par un « add » du même lot reste valide (le slot a bien
+        # été libéré puis re-rempli), il ne faut pas le compter comme échec.
+        readded = {(str(op["containerId"]).lower(), op["slotIndex"])
+                   for op in inv_changes
+                   if op["action"] == "add" and op.get("result") is None and "slotIndex" in op}
         for op in inv_changes:
-            if op.get("result") in ("container_absent", "container_full", "no_template"):
+            # container_full = inventaire plein (capacité) : les objets qui rentraient
+            # sont écrits, on ne bloque pas l'enregistrement (comme palbox_full).
+            if op.get("result") == "container_full":
+                continue
+            if op.get("result") in ("container_absent", "no_template"):
                 verified = False
                 mismatches.append({"inventory": op})
                 continue
@@ -587,7 +672,8 @@ def main():
             by_idx = {_slot_rv(s)["slot_index"]: _slot_rv(s) for s in slots}
             act = op["action"]
             if act == "remove":
-                if op["slotIndex"] in by_idx:
+                reused = (str(op["containerId"]).lower(), op["slotIndex"]) in readded
+                if op["slotIndex"] in by_idx and not reused:
                     verified = False; mismatches.append({"inventory": "remove", "slotIndex": op["slotIndex"]})
             else:  # count / item / add
                 rv = by_idx.get(op["slotIndex"])
@@ -602,7 +688,11 @@ def main():
         idx2 = index_chars(gvas2)
         for c in created:
             if c.get("error"):
-                verified = False; mismatches.append({"create": c}); continue
+                # palbox_full = limite de capacité de la boîte (pas une corruption) :
+                # les exemplaires déjà créés restent valides, on ne bloque pas l'écriture.
+                if c["error"] != "palbox_full":
+                    verified = False; mismatches.append({"create": c})
+                continue
             sp2 = idx2.get(str(c["instanceId"]).lower())
             if sp2 is None or sp2.get("CharacterID", {}).get("value") != c["characterId"]:
                 verified = False; mismatches.append({"create": "pal_absent", "instanceId": c["instanceId"]})

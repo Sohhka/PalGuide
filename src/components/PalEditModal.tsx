@@ -7,6 +7,7 @@ import type { ImportedPal } from '../lib/types'
 
 const MAX_PASSIVES = 4
 const MAX_SKILLS = 3
+const MAX_SOUL = 20 // âmes : rang max par attribut (Statue du Pouvoir)
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(n || 0)))
 
 /** Correspondance clé de passif -> nom lisible (pour l'affichage). */
@@ -35,6 +36,11 @@ export function PalEditModal({
   const [gender, setGender] = useState(pal.gender)
   const [passives, setPassives] = useState<string[]>(pal.passives)
   const [skills, setSkills] = useState<string[]>(pal.activeSkills ?? [])
+  const curSouls = pal.souls ?? { hp: 0, atk: 0, def: 0, work: 0 }
+  const [soulHp, setSoulHp] = useState(curSouls.hp)
+  const [soulAtk, setSoulAtk] = useState(curSouls.atk)
+  const [soulDef, setSoulDef] = useState(curSouls.def)
+  const [soulWork, setSoulWork] = useState(curSouls.work)
   const [cat, setCat] = useState<SkillsCatalog | null>(null)
   useEffect(() => { loadSkillsCatalog().then(setCat) }, [])
 
@@ -45,19 +51,23 @@ export function PalEditModal({
   const set = useMemo(() => {
     const s: Record<string, number | string | string[]> = {}
     if (nickname.trim() !== (pal.nickname ?? '')) s.NickName = nickname.trim()
-    if (level !== pal.level) s.Level = clamp(level, 1, 65)
+    if (level !== pal.level) s.Level = clamp(level, 1, 80)
     if (hp !== pal.iv.hp) s.Talent_HP = clamp(hp, 0, 100)
     if (shot !== pal.iv.shot) s.Talent_Shot = clamp(shot, 0, 100)
     if (defense !== pal.iv.defense) s.Talent_Defense = clamp(defense, 0, 100)
     if (stars !== pal.stars) s.Rank = clamp(stars, 0, 4) + 1 // Rank 1 = 0 étoile
     if (gender && gender !== pal.gender) s.Gender = gender === 'female' ? 'Female' : 'Male'
+    if (soulHp !== curSouls.hp) s.Rank_HP = clamp(soulHp, 0, MAX_SOUL)
+    if (soulAtk !== curSouls.atk) s.Rank_Attack = clamp(soulAtk, 0, MAX_SOUL)
+    if (soulDef !== curSouls.def) s.Rank_Defence = clamp(soulDef, 0, MAX_SOUL)
+    if (soulWork !== curSouls.work) s.Rank_CraftSpeed = clamp(soulWork, 0, MAX_SOUL)
     const passSame = passives.length === pal.passives.length && passives.every((p, i) => p === pal.passives[i])
     if (!passSame) s.PassiveSkillList = passives
     const cur = pal.activeSkills ?? []
     const skillsSame = skills.length === cur.length && skills.every((k, i) => k === cur[i])
     if (!skillsSame) s.EquipWaza = skills
     return s
-  }, [nickname, level, hp, shot, defense, stars, gender, passives, skills, pal])
+  }, [nickname, level, hp, shot, defense, stars, gender, soulHp, soulAtk, soulDef, soulWork, curSouls, passives, skills, pal])
 
   const changedCount = Object.keys(set).length
   const canSave = changedCount > 0 && !!pal.instanceId && !saving
@@ -100,6 +110,7 @@ export function PalEditModal({
         nickname: nickname.trim() || null,
         level,
         iv: { ...pal.iv, hp, shot, defense },
+        souls: { hp: soulHp, atk: soulAtk, def: soulDef, work: soulWork },
         stars,
         gender,
         passives,
@@ -139,8 +150,8 @@ export function PalEditModal({
                 placeholder={species?.name ?? ''} onChange={(e) => setNickname(e.target.value)} />
             </Field>
             <Field label="Niveau">
-              <input type="number" className="input" min={1} max={65} value={level}
-                onChange={(e) => setLevel(clamp(+e.target.value, 1, 65))} />
+              <input type="number" className="input" min={1} max={80} value={level}
+                onChange={(e) => setLevel(clamp(+e.target.value, 1, 80))} />
             </Field>
           </div>
 
@@ -151,6 +162,17 @@ export function PalEditModal({
               <IvSlider label="PV" value={hp} onChange={setHp} />
               <IvSlider label="Attaque" value={shot} onChange={setShot} />
               <IvSlider label="Défense" value={defense} onChange={setDefense} />
+            </div>
+          </div>
+
+          {/* Âmes de Pal */}
+          <div>
+            <div className="hud-h mb-2 text-sm">Âmes de Pal <span className="text-xs font-normal text-[var(--color-faint)]">Statue du Pouvoir · 0–{MAX_SOUL} par attribut</span></div>
+            <div className="space-y-2">
+              <SoulSlider label="PV" value={soulHp} onChange={setSoulHp} />
+              <SoulSlider label="Attaque" value={soulAtk} onChange={setSoulAtk} />
+              <SoulSlider label="Défense" value={soulDef} onChange={setSoulDef} />
+              <SoulSlider label="Vit. travail" value={soulWork} onChange={setSoulWork} />
             </div>
           </div>
 
@@ -301,6 +323,20 @@ function IvSlider({ label, value, onChange }: { label: string; value: number; on
         style={{ accentColor: color }} />
       <input type="number" min={0} max={100} value={value} onChange={(e) => onChange(clamp(+e.target.value, 0, 100))}
         className="input w-16 py-1 text-center tabular-nums" />
+    </div>
+  )
+}
+
+function SoulSlider({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-20 shrink-0 text-xs font-semibold text-[var(--color-muted)]">{label}</span>
+      <input type="range" min={0} max={MAX_SOUL} value={value} onChange={(e) => onChange(+e.target.value)}
+        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-[var(--color-surface-3)]"
+        style={{ accentColor: 'var(--color-accent)' }} />
+      <input type="number" min={0} max={MAX_SOUL} value={value} onChange={(e) => onChange(clamp(+e.target.value, 0, MAX_SOUL))}
+        className="input w-14 py-1 text-center tabular-nums" />
+      <span className="w-11 shrink-0 text-right text-xs text-[var(--color-faint)] tabular-nums">+{value * 3}%</span>
     </div>
   )
 }
