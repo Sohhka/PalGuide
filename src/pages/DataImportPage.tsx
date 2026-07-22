@@ -17,6 +17,7 @@ import {
   Sparkles,
   ArrowLeftRight,
   RefreshCw,
+  LockOpen,
 } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PalIcon } from '../components/PalIcon'
@@ -28,6 +29,7 @@ import { InventoryEditModal } from '../components/InventoryEditModal'
 import { RestoreBackupModal } from '../components/RestoreBackupModal'
 import { CreatePalModal } from '../components/CreatePalModal'
 import { FixHostModal } from '../components/FixHostModal'
+import { UnlockChestsModal } from '../components/UnlockChestsModal'
 import { palByKey } from '../data'
 import { useStore } from '../store/useStore'
 import { resolveImport, LOCATION_LABEL, ivTotal, palsOfPlayer } from '../lib/savedata'
@@ -55,6 +57,7 @@ export function DataImportPage() {
   const [editingInventory, setEditingInventory] = useState(false)
   const [creatingPal, setCreatingPal] = useState(false)
   const [fixingHost, setFixingHost] = useState(false)
+  const [unlockingChests, setUnlockingChests] = useState(false)
   const [restoring, setRestoring] = useState(false)
 
   const currentPlayer = useMemo(
@@ -150,6 +153,11 @@ export function DataImportPage() {
               {canEdit && multiplayer && (
                 <button className="btn" onClick={() => setFixingHost(true)} title="Jouer en solo une save multijoueur (échange de GUID)">
                   <ArrowLeftRight size={15} /> Solo depuis multi
+                </button>
+              )}
+              {canEdit && (
+                <button className="btn" onClick={() => setUnlockingChests(true)} title="Rendre tous les coffres accessibles à tous (retire les verrous privés)">
+                  <LockOpen size={15} /> Déverrouiller les coffres
                 </button>
               )}
               {canEdit && (
@@ -333,6 +341,9 @@ export function DataImportPage() {
       )}
       {fixingHost && importedSave?.levelPath && (
         <FixHostModal players={importedSave.players} levelPath={importedSave.levelPath} onClose={() => setFixingHost(false)} />
+      )}
+      {unlockingChests && canEdit && importedSave?.levelPath && (
+        <UnlockChestsModal levelPath={importedSave.levelPath} onClose={() => setUnlockingChests(false)} />
       )}
     </>
   )

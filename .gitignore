@@ -25,3 +25,9 @@ release
 # Cache Python
 __pycache__/
 *.pyc
+
+# Données de sauvegarde Palworld — NE JAMAIS committer (données de partie perso)
+*.sav
+*.gvas
+SaveGames/
+**/imported.json

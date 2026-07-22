@@ -78,6 +78,7 @@ interface EditSaveResult {
     appliedCount: number
     notFound: string[]
     mismatches: unknown[]
+    applied?: Array<{ kind: string; result?: unknown } & Record<string, unknown>>
   }
 }
 
@@ -144,7 +145,7 @@ interface ElectronAPI {
   reimportSave: (levelPath: string) => Promise<ImportSaveResult>
   editSave: (payload: {
     levelPath: string
-    edits: { pals?: PalEditOp[]; saveData?: Record<string, number>; inventory?: InventoryOp[]; createPals?: CreatePalOp[] }
+    edits: { pals?: PalEditOp[]; saveData?: Record<string, number>; inventory?: InventoryOp[]; createPals?: CreatePalOp[]; unlockChests?: boolean }
   }) => Promise<EditSaveResult>
   editPlayer: (payload: {
     levelPath: string

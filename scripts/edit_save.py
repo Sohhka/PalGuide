@@ -263,6 +263,8 @@ def apply_inventory(containers, inv_ops):
 # --- Création de Pals (clone d'un Pal existant du joueur + surcharge) ---
 CC_KEY = ".worldSaveData.CharacterContainerSaveData.Value.Slots.Slots.RawData"
 GRP_KEY = ".worldSaveData.GroupSaveDataMap"
+MO_KEY = ".worldSaveData.MapObjectSaveData"
+ZERO_GUID = "00000000-0000-0000-0000-000000000000"
 
 def _uuid(v):
     try: return v if isinstance(v, uuid.UUID) else uuid.UUID(str(v))
@@ -392,6 +394,76 @@ def create_pals(gvas, specs):
         results.append({"instanceId": str(new_iid), "characterId": spec["characterId"], "slotIndex": free, "guild": guild})
     return results
 
+# ---------------------------------------------------------------------------
+# Déverrouillage des coffres/étals privés (MapObjectSaveData)
+#
+# Le verrou privé d'un coffre est stocké dans `private_lock_player_uid` :
+#   - GUID d'un joueur  -> coffre verrouillé (accessible seulement à lui)
+#   - GUID zéro          -> accessible à toute la guilde
+# Les étals (booth) ont en plus un octet `is_private_lock` (0/1).
+# On remet ces deux champs à « accessible à tous » partout dans la carte.
+# ---------------------------------------------------------------------------
+def unlock_all_map_objects(gvas):
+    wsd = gvas.properties["worldSaveData"]["value"]
+    mo = wsd.get("MapObjectSaveData")
+    if not mo:
+        return {"scanned": 0, "unlocked": 0, "byType": {}}
+    # On compte les OBJETS distincts (un étal a les deux champs de verrou : on ne
+    # veut pas le compter deux fois). `scanned` = objets porteurs d'un verrou.
+    stats = {"scanned": 0, "unlocked": 0}
+    by_type = {}
+
+    def walk(o, ctype=None):
+        if isinstance(o, dict):
+            ct = o.get("concrete_model_type", ctype)
+            has_lock, changed = False, False
+            if "private_lock_player_uid" in o:
+                has_lock = True
+                if str(o["private_lock_player_uid"]).lower() != ZERO_GUID:
+                    o["private_lock_player_uid"] = ZERO_GUID
+                    changed = True
+            if "is_private_lock" in o:
+                has_lock = True
+                if o["is_private_lock"]:
+                    o["is_private_lock"] = 0
+                    changed = True
+            if has_lock:
+                stats["scanned"] += 1
+            if changed:
+                stats["unlocked"] += 1
+                by_type[ct] = by_type.get(ct, 0) + 1
+            for v in o.values():
+                walk(v, ct)
+        elif isinstance(o, list):
+            for i in o:
+                walk(i, ctype)
+
+    walk(mo["value"])
+    return {"scanned": stats["scanned"], "unlocked": stats["unlocked"], "byType": by_type}
+
+def count_remaining_locks(gvas):
+    """Compte les verrous privés encore actifs (pour la vérification post-écriture)."""
+    wsd = gvas.properties["worldSaveData"]["value"]
+    mo = wsd.get("MapObjectSaveData")
+    if not mo:
+        return 0
+    rem = {"n": 0}
+
+    def walk(o):
+        if isinstance(o, dict):
+            if "private_lock_player_uid" in o and str(o["private_lock_player_uid"]).lower() != ZERO_GUID:
+                rem["n"] += 1
+            if o.get("is_private_lock"):
+                rem["n"] += 1
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for i in o:
+                walk(i)
+
+    walk(mo["value"])
+    return rem["n"]
+
 def main():
     gvas_in, gvas_out, edits_path = sys.argv[1], sys.argv[2], sys.argv[3]
     edits = json.load(open(edits_path, encoding="utf-8"))
@@ -400,12 +472,14 @@ def main():
     inv_ops = edits.get("inventory", [])
     create_specs = edits.get("createPals", [])
     guild_admin = edits.get("guildAdmin")
+    unlock_chests = bool(edits.get("unlockChests"))
 
     data = open(gvas_in, "rb").read()
     need_char = bool(char_edits)
     need_inv = bool(inv_ops)
     need_create = bool(create_specs)
     need_guild = bool(guild_admin)
+    need_unlock = unlock_chests
     wanted = set()
     if need_char:
         wanted.add(CHAR_KEY)
@@ -415,6 +489,8 @@ def main():
         wanted.update((CHAR_KEY, CC_KEY, GRP_KEY))
     if need_guild:
         wanted.add(GRP_KEY)
+    if need_unlock:
+        wanted.add(MO_KEY)
     cprops = {k: v for k, v in PALWORLD_CUSTOM_PROPERTIES.items() if k in wanted}
     gvas = GvasFile.read(data, type_hints=PALWORLD_TYPE_HINTS, custom_properties=cprops)
 
@@ -468,6 +544,12 @@ def main():
     if need_guild:
         guild_result = set_guild_admin(gvas, guild_admin["newAdminUid"])
         applied.append({"kind": "guildAdmin", "result": guild_result})
+
+    # --- déverrouillage des coffres/étals privés (Level.sav) ---
+    unlock_result = None
+    if need_unlock:
+        unlock_result = unlock_all_map_objects(gvas)
+        applied.append({"kind": "unlockChests", "result": unlock_result})
 
     out = gvas.write(cprops)
     open(gvas_out, "wb").write(out)
@@ -534,6 +616,10 @@ def main():
                      for g in groups2 if "admin_player_uid" in g["value"]["RawData"]["value"])
             if not ok:
                 verified = False; mismatches.append({"guildAdmin": "not_applied"})
+    if need_unlock:
+        remaining = count_remaining_locks(gvas2)
+        if remaining:
+            verified = False; mismatches.append({"unlockChests": "remaining", "count": remaining})
 
     print(json.dumps({
         "ok": True,
