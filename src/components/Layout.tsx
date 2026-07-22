@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { BookOpen, Egg, Network, Target, Package, Users, StickyNote, Gamepad2, Map as MapIcon, Swords, Info } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { TitleBar } from './TitleBar'
+import { AutoReimport } from './AutoReimport'
 
 type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
 
@@ -45,6 +46,7 @@ function Tab({ item }: { item: NavItem }) {
 export function Layout() {
   return (
     <div className="flex h-screen flex-col">
+      <AutoReimport />
       <TitleBar />
 
       {/* Barre d'onglets style jeu */}

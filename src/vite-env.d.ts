@@ -18,7 +18,7 @@ interface ImportedPalRaw {
 interface ImportSaveResult {
   ok?: boolean
   canceled?: boolean
-  error?: 'PYTHON_MISSING' | 'MODULE_MISSING' | 'ERROR'
+  error?: 'PYTHON_MISSING' | 'MODULE_MISSING' | 'ERROR' | 'FILE_MISSING' | 'FILE_BUSY'
   detail?: string
   levelPath?: string
   data?: {
@@ -141,6 +141,7 @@ interface ElectronAPI {
   isMaximized: () => Promise<boolean>
   onMaximizeChange: (cb: (value: boolean) => void) => () => void
   importSave: () => Promise<ImportSaveResult>
+  reimportSave: (levelPath: string) => Promise<ImportSaveResult>
   editSave: (payload: {
     levelPath: string
     edits: { pals?: PalEditOp[]; saveData?: Record<string, number>; inventory?: InventoryOp[]; createPals?: CreatePalOp[] }

@@ -1,7 +1,7 @@
 {
   "name": "palguide",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "description": "PalGuide — compagnon Palworld 1.0 : Paldex, Breeding, Capture, Team Builder (FR)",
   "author": "PalGuide",

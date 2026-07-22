@@ -16,6 +16,7 @@ import {
   Archive,
   Sparkles,
   ArrowLeftRight,
+  RefreshCw,
 } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { PalIcon } from '../components/PalIcon'
@@ -36,11 +37,13 @@ import type { ImportedPal, PalLocation, Pal } from '../lib/types'
 const LOC_ICON: Record<PalLocation, typeof Users> = { party: Swords, palbox: Box, base: Home }
 
 export function DataImportPage() {
-  const { importedSave, setImportedSave, clearImportedSave, selectedPlayerUid, setSelectedPlayerUid } = useStore()
+  const { importedSave, setImportedSave, clearImportedSave, selectedPlayerUid, setSelectedPlayerUid,
+    autoRefresh, setAutoRefresh, lastRefresh, refreshImportedSave } = useStore()
   const isElectron = !!window.electronAPI
   const multiplayer = (importedSave?.players.length ?? 0) > 1
   const canEdit = isElectron && !!window.electronAPI?.editSave && !!importedSave?.levelPath
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<{ code: string; detail?: string } | null>(null)
 
   const [q, setQ] = useState('')
@@ -78,6 +81,21 @@ export function DataImportPage() {
       setError({ code: 'ERROR', detail: String((e as Error).message) })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const doRefresh = async () => {
+    if (!window.electronAPI?.reimportSave || !importedSave?.levelPath) return
+    setRefreshing(true)
+    setError(null)
+    try {
+      const res = await window.electronAPI.reimportSave(importedSave.levelPath)
+      if (res.ok && res.data) refreshImportedSave({ ...resolveImport(res.data), levelPath: res.levelPath })
+      else if (res.error) setError({ code: res.error, detail: res.detail })
+    } catch (e) {
+      setError({ code: 'ERROR', detail: String((e as Error).message) })
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -199,6 +217,12 @@ export function DataImportPage() {
                       <code className="rounded bg-[var(--color-bg-soft)] px-1.5 py-0.5">pip install palworld-save-tools</code>
                     </span>
                   )}
+                  {error.code === 'FILE_MISSING' && (
+                    <span><strong>Fichier introuvable.</strong> Le <code>Level.sav</code> a peut-être été déplacé ou supprimé. Réimporte-le manuellement.</span>
+                  )}
+                  {error.code === 'FILE_BUSY' && (
+                    <span><strong>Fichier occupé</strong> (le jeu est en train de sauvegarder). Réessaie dans un instant.</span>
+                  )}
                   {error.code === 'ERROR' && (
                     <span>
                       Impossible de lire cette sauvegarde. Vérifie que c'est bien un <code>Level.sav</code>.
@@ -206,6 +230,21 @@ export function DataImportPage() {
                     </span>
                   )}
                 </div>
+              </div>
+            )}
+
+            {importedSave?.levelPath && (
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[var(--color-border-soft)] pt-3">
+                <button className="btn" onClick={doRefresh} disabled={refreshing || loading}>
+                  {refreshing ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />} Actualiser maintenant
+                </button>
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand)]" />
+                  Actualisation automatique <span className="text-xs text-[var(--color-faint)]">(toutes les 5 min)</span>
+                </label>
+                {lastRefresh && (
+                  <span className="ml-auto text-xs text-[var(--color-faint)]">Dernière actualisation : {new Date(lastRefresh).toLocaleTimeString('fr-FR')}</span>
+                )}
               </div>
             )}
           </>

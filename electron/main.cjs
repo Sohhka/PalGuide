@@ -92,6 +92,24 @@ ipcMain.handle('save:import', async () => {
   }
 })
 
+// ----- Ré-import silencieux depuis un chemin connu (auto-actualisation) -----
+ipcMain.handle('save:reimport', async (_e, payload) => {
+  const { levelPath } = payload || {}
+  if (!levelPath) return { error: 'ERROR', detail: 'Chemin manquant' }
+  try {
+    const data = await importSave(levelPath, importScriptPath())
+    return { ok: true, data, levelPath }
+  } catch (e) {
+    const msg = String(e.message || e)
+    let code = 'ERROR'
+    if (msg.includes('PYTHON_MISSING')) code = 'PYTHON_MISSING'
+    else if (msg.includes('MODULE_MISSING')) code = 'MODULE_MISSING'
+    else if (msg.includes('ENOENT') || msg.includes('introuvable')) code = 'FILE_MISSING'
+    else if (msg.includes('EBUSY') || msg.includes('EPERM')) code = 'FILE_BUSY'
+    return { error: code, detail: msg.slice(0, 300) }
+  }
+})
+
 // ----- Édition d'une sauvegarde (écrit sur le fichier d'origine, avec backup auto) -----
 ipcMain.handle('save:edit', async (_e, payload) => {
   const { levelPath, edits } = payload || {}

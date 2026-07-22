@@ -49,6 +49,12 @@ interface AppState {
   // Personnage sélectionné (saves coop/serveur multijoueur)
   selectedPlayerUid: string | null
   setSelectedPlayerUid: (uid: string | null) => void
+  // Auto-actualisation de la save (ré-import périodique depuis le chemin mémorisé)
+  autoRefresh: boolean
+  setAutoRefresh: (v: boolean) => void
+  lastRefresh: number | null
+  /** ré-importe (silencieux) en gardant le personnage sélectionné */
+  refreshImportedSave: (save: ImportedSave) => void
 
   // Favoris
   favorites: string[]
@@ -122,6 +128,22 @@ export const useStore = create<AppState>()(
               : null,
         }),
       clearImportedSave: () => set({ importedSave: null, selectedPlayerUid: null }),
+      autoRefresh: false,
+      setAutoRefresh: (v) => set({ autoRefresh: v }),
+      lastRefresh: null,
+      refreshImportedSave: (save) =>
+        set((s) => {
+          const keep = !!s.selectedPlayerUid && save.players.some((p) => p.uid === s.selectedPlayerUid)
+          return {
+            importedSave: save,
+            selectedPlayerUid: keep
+              ? s.selectedPlayerUid
+              : save.players.length
+                ? [...save.players].sort((a, b) => b.palCount - a.palCount)[0].uid
+                : null,
+            lastRefresh: Date.now(),
+          }
+        }),
       patchImportedPal: (instanceId, patch) =>
         set((s) =>
           s.importedSave
